@@ -10,3 +10,11 @@ scry_view_pdf() {
         scry_qlmanage_preview "$file"
     fi
 }
+
+# The Quick Look window is for viewing, not previewing; show a summary.
+scry_preview_pdf() {
+    local pages
+    scry_info "$1"
+    pages="$(mdls -name kMDItemNumberOfPages -raw -- "$1" 2>/dev/null || true)"
+    case "$pages" in ""|"(null)") ;; *) echo "$pages pages" ;; esac
+}

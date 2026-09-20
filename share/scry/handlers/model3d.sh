@@ -26,3 +26,19 @@ scry_view_model3d() {
         rm -rf "$tmpdir"
     fi
 }
+
+# Renders like scry_view_model3d, but always inline at the pane width, and
+# cleans up its tmpdir even if fzf kills the preview mid-render.
+scry_preview_model3d() {
+    local file="$1"
+    scry_require f3d "brew install f3d"
+    SCRY_3D_TMP="$(mktemp -d)"
+    trap 'rm -rf "$SCRY_3D_TMP"' EXIT
+    f3d --output="$SCRY_3D_TMP/preview.png" --resolution=1000,750 -- "$file" >/dev/null 2>&1 || true
+    if [ ! -s "$SCRY_3D_TMP/preview.png" ]; then
+        scry_info "$file"
+        echo "(f3d could not render this file)"
+        return
+    fi
+    scry_preview_image_file "$SCRY_3D_TMP/preview.png"
+}

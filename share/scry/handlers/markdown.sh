@@ -2,17 +2,31 @@
 scry_register markdown "md markdown mkd mdown" "glow (-f: Quick Look window)"
 scry_helper glow "markdown" "brew install glow"
 
+# glow ignores its file argument and reads stdin whenever stdin is a pipe
+# (e.g. inside `git ls-files | while read f; do scry "$f"; done`), which
+# shows a blank page. So when stdin isn't a terminal, feed it the file.
 scry_view_markdown() {
-    local file="$1" w
+    local file="$1" w args=(-p)
     if [ "$FORCE_WINDOW" = "1" ]; then
         scry_qlmanage_preview "$file"
         return
     fi
     scry_require glow "brew install glow"
     w="$(scry_term_width)"
-    if [ -n "$w" ]; then
-        glow -p -w "$w" -- "$file"
+    [ -n "$w" ] && args+=(-w "$w")
+    if [ -t 0 ]; then
+        glow "${args[@]}" -- "$file"
     else
-        glow -p -- "$file"
+        glow "${args[@]}" - < "$file"
     fi
+}
+
+# No pager, and an explicit style: glow only colors output on a tty otherwise.
+# The file always goes in on stdin, so it doesn't matter what stdin was.
+scry_preview_markdown() {
+    local w args=(-s "${GLAMOUR_STYLE:-dark}")
+    scry_require glow "brew install glow"
+    w="$(scry_term_width)"
+    [ -n "$w" ] && args+=(-w "$w")
+    glow "${args[@]}" - < "$1"
 }

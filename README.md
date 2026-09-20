@@ -38,6 +38,7 @@ Only install what you'll use. Each group is its own Brewfile:
 | `make deps`           | bat, glow, viu               | text/code, yaml, markdown, images    |
 | `make deps-data`      | visidata                     | csv / tsv / psv                      |
 | `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf                            |
+| `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
 | `make deps-quicklook` | qlmarkdown (cask)            | rendered markdown for `scry -f`      |
 
 Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
@@ -47,42 +48,101 @@ Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
 ## Usage
 
 ```
-scry [-f] FILE...
+scry [OPTIONS] FILE...
 scry DIR
 cmd | scry
-scry --doctor
-scry -h | --help
 ```
 
-| Invocation         | What it does                                                          |
-| ------------------ | --------------------------------------------------------------------- |
-| `scry FILE...`     | View each file with the viewer for its extension                      |
-| `scry -f FILE...`  | Use the "full" variant of the viewer (see below)                      |
-| `scry DIR`         | List the directory (`ls -la`)                                         |
-| `cmd \| scry`      | Read piped stdin like `cat`, through `bat` if it's installed          |
-| `scry --doctor`    | Show which helpers are installed and what each one enables            |
-| `scry -h`, `--help`| Show usage and the table of handlers with the extensions each claims  |
+| Invocation           | What it does                                                          |
+| -------------------- | --------------------------------------------------------------------- |
+| `scry FILE...`       | View each file with the viewer for its extension                      |
+| `scry DIR`           | List the directory (`ls -la`)                                         |
+| `cmd \| scry`        | Read piped stdin like `cat`, through `bat` if it's installed          |
 
-`-f` must come first, before the file names, and applies to all of them. It
-means "give me the heavier, windowed view". Files with no full variant are
-shown normally.
+Options (any order, before the file names; use `--` before a name that starts with `-`):
 
-| File type                        | `scry FILE`               | `scry -f FILE`                   |
-| -------------------------------- | ------------------------- | -------------------------------- |
-| Markdown                         | rendered in the terminal  | Quick Look window                |
-| Images                           | inline in the terminal    | Quick Look window                |
+| Option                | What it does                                                                     |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `-f`, `--full`        | Use the "full" variant of the viewer (windowed / extract; see below)             |
+| `-A`, `--show-all`    | Skip the handlers and show the file through `bat --show-all` (see below)         |
+| `-p`, `--preview`     | Non-interactive output for previewers such as fzf (see below)                    |
+| `--fzf [DIR]`         | Pick files under `DIR` (default `.`) with fzf, then view them                    |
+| `--doctor`            | Show which helpers are installed and what each one enables                       |
+| `-h`, `--help`        | Show usage and the table of handlers with the extensions each claims             |
+
+### `-f`, `--full`: the full variant
+
+`-f` means "give me the heavier, windowed view". It applies to every file on
+the command line, and files with no full variant are shown normally.
+
+| File type                        | `scry FILE`               | `scry -f FILE`                    |
+| -------------------------------- | ------------------------- | --------------------------------- |
+| Markdown                         | rendered in the terminal  | Quick Look window                 |
+| Images                           | inline in the terminal    | Quick Look window                 |
 | STL / 3MF                        | rendered image, inline    | rendered image, Quick Look window |
-| PDF                              | Quick Look window         | Preview.app                      |
-| zip                              | file listing              | extract, open in Finder          |
-| tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder          |
+| PDF                              | Quick Look window         | Preview.app                       |
+| zip                              | file listing              | extract, open in Finder           |
+| tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
 
-Environment variables:
+### `-A`: non-printable characters
+
+`scry -A FILE` shows tabs, spaces, line endings and other invisible characters
+(`bat --show-all`). It bypasses the type-specific handlers on purpose: it's a
+"what's really in this file" mode, and rendering markdown or opening a PDF
+window would defeat that. It also works on stdin (`cmd | scry -A`) and needs
+`bat`.
+
+```
+$ scry -A notes.txt
+tab↹here··␍␊
+line2␊
+```
+
+### `-p`, `--preview` and fzf
+
+`scry --preview FILE` (or `-p`) is for previewers like fzf. It never opens a window,
+pager or player, always writes to stdout, keeps color, and fits the width of
+fzf's preview pane (`$FZF_PREVIEW_COLUMNS`).
+
+```sh
+fzf --preview 'scry --preview {}'
+```
+
+What each type shows:
+
+| File type                         | Preview                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| Text, code, yaml                  | `bat` with line numbers (first 500 lines)                  |
+| Markdown                          | rendered by `glow` (dark style; set `GLAMOUR_STYLE` to change) |
+| Images, STL / 3MF                 | block-character image at pane width (`viu`; `f3d` renders 3D) |
+| CSV / TSV / PSV                   | first 30 rows as aligned columns                           |
+| zip, tar, rtf                     | file listing / converted text                              |
+| PDF, audio, video                 | a short summary (kind, size, pages or duration); nothing plays or opens |
+| Anything from a handler with no preview function | a short summary, so nothing interactive ever runs in a preview pane |
+
+`--preview` overrides `-f`, and combines with `-A`
+(`fzf --preview 'scry --preview -A {}'`).
+
+`scry --fzf` wraps all of this into a file picker: it lists the files under a
+directory, previews each with `scry --preview`, and views what you select
+(Tab to select several). Flags given before it carry over, so `scry -A --fzf`
+previews and views raw.
+
+```sh
+scry --fzf            # files under the current directory
+scry --fzf ~/Documents
+```
+
+It needs `make deps-fzf`.
+
+### Environment variables
 
 | Variable                | Effect                                                           |
 | ----------------------- | ---------------------------------------------------------------- |
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
+| `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 
 ## Adding your own file types
 
@@ -93,7 +153,10 @@ wherever `SCRY_USER_HANDLERS` points). Any `*.sh` file there is loaded after
 the built-ins, so a handler that claims an extension already taken wins.
 
 A handler declares itself, optionally lists the helper program it needs, and
-defines one function, `scry_view_<name>`, which receives the file path:
+defines one function, `scry_view_<name>`, which receives the file path. It can
+also define `scry_preview_<name>` for `--preview`; without one, previews of
+that type show a short summary, so a handler is never run interactively inside
+a preview pane by accident.
 
 ```bash
 # ~/.config/scry/handlers/json.sh
@@ -103,6 +166,12 @@ scry_helper jq "json" "brew install jq"
 scry_view_json() {
     scry_require jq "brew install jq"
     jq -C . "$1" | less -R
+}
+
+# Optional: what fzf shows. No pager here, and cap the length.
+scry_preview_json() {
+    scry_require jq "brew install jq"
+    jq -C . "$1" | head -n 200
 }
 ```
 
@@ -116,8 +185,11 @@ What's available to handlers:
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
 | `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
+| `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
 | `scry_show_image FILE`                  | Show an image the way scry does                                |
-| `scry_bat_view ARGS...`                 | Run `bat` at the right terminal width                          |
+| `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |
+| `scry_bat_view ARGS...`                 | Run `bat` at the right width; honors `--preview` and `-A`      |
+| `scry_term_width`                       | Print the width to render at (the fzf pane's, if previewing)   |
 | `scry_qlmanage_preview FILE`            | Open a Quick Look window and bring it to the front             |
 
 Handler names must be unique (registering the same name twice is an error).
@@ -133,8 +205,8 @@ make uninstall
 This removes the `scry` command and its `share/scry` files (for a `make link`
 install, just the symlink). It deliberately does **not** touch:
 
-- **The Homebrew helpers.** `bat`, `glow` and the rest may be used by other
-  tools. `make uninstall-deps` lists the ones that are installed and asks
+- **The Homebrew helpers.** `bat`, `glow`, `fzf` and the rest may be used by
+  other tools. `make uninstall-deps` lists the ones that are installed and asks
   before running `brew uninstall` on them.
 - **The Quick Look extension**, if you ran `make deps-quicklook`.
   `make uninstall-quicklook` unregisters it and removes the `qlmarkdown` cask.

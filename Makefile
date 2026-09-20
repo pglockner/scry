@@ -2,9 +2,9 @@ PREFIX ?= $(HOME)/.local
 BINDIR   = $(DESTDIR)$(PREFIX)/bin
 SHAREDIR = $(DESTDIR)$(PREFIX)/share/scry
 QLMD_APPEX = /Applications/QLMarkdown.app/Contents/PlugIns/Markdown QL Extension.appex
-DEP_FORMULAE = bat glow viu visidata f3d
+DEP_FORMULAE = bat glow viu visidata f3d fzf
 
-.PHONY: help install link uninstall deps deps-data deps-3d deps-quicklook \
+.PHONY: help install link uninstall deps deps-data deps-3d deps-fzf deps-quicklook \
 	uninstall-quicklook uninstall-deps lint doctor
 
 help:
@@ -14,6 +14,7 @@ help:
 	@echo "make deps                 install core helpers (bat, glow, viu)"
 	@echo "make deps-data            + visidata, for csv/tsv"
 	@echo "make deps-3d              + f3d, for stl/3mf (large)"
+	@echo "make deps-fzf             + fzf, for scry --fzf (file picker with previews)"
 	@echo "make deps-quicklook       + qlmarkdown, for scry -f on markdown"
 	@echo "make uninstall-quicklook  undo deps-quicklook"
 	@echo "make uninstall-deps       optionally brew-uninstall the helpers (asks first)"
@@ -47,6 +48,9 @@ deps-data:
 
 deps-3d:
 	brew bundle --file=Brewfile.3d
+
+deps-fzf:
+	brew bundle --file=Brewfile.fzf
 
 deps-quicklook:
 	brew bundle --file=Brewfile.quicklook

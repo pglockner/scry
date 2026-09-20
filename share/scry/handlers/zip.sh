@@ -14,3 +14,8 @@ scry_view_zip() {
         unzip -l -- "$file"
     fi
 }
+
+scry_preview_zip() {
+    scry_require unzip "unzip ships with macOS; this shouldn't happen"
+    unzip -l -- "$1"
+}

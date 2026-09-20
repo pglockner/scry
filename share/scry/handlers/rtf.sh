@@ -5,3 +5,8 @@ scry_view_rtf() {
     scry_require textutil "textutil ships with macOS; this shouldn't happen"
     textutil -convert txt -stdout -- "$1"
 }
+
+scry_preview_rtf() {
+    scry_require textutil "textutil ships with macOS; this shouldn't happen"
+    textutil -convert txt -stdout -- "$1" | head -n 200
+}

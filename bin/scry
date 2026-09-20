@@ -17,9 +17,10 @@ while [ -L "$src" ]; do
     src="$(readlink "$src")"
     case "$src" in /*) ;; *) src="$dir/$src" ;; esac
 done
+SCRY_SELF="$(cd -P "$(dirname "$src")" && pwd)/$(basename "$src")"
 SCRY_ROOT="$(cd -P "$(dirname "$src")/.." && pwd)"
 SCRY_SHARE="${SCRY_SHARE:-$SCRY_ROOT/share/scry}"
-SCRY_USER_HANDLERS="${SCRY_USER_HANDLERS:-${XDG_CONFIG_HOME:-$HOME/.config}/scry/handlers}"
+SCRY_USER_HANDLERS="${SCRY_USER_HANDLERS:-${XDG_CONFIG_HOME:-${HOME:-}/.config}/scry/handlers}"
 
 if [ ! -r "$SCRY_SHARE/lib.sh" ]; then
     echo "scry: can't find $SCRY_SHARE/lib.sh (broken install? try: make install)" >&2
@@ -41,12 +42,21 @@ show_help() {
 scry - like cat, but dispatches to a nicer viewer based on file extension
 
 Usage:
-  scry FILE...       view one or more files (dispatched independently)
-  scry -f FILE...    force the "full" variant -- see (-f: ...) notes below
-  scry DIR           list directory contents (ls -la)
-  cmd | scry         read piped stdin like cat
-  scry --doctor      show which helpers are installed
-  scry -h | --help   show this help
+  scry [OPTIONS] FILE...   view one or more files (dispatched independently)
+  scry DIR                 list directory contents (ls -la)
+  cmd | scry               read piped stdin like cat
+
+Options:
+  -f, --full        force the "full" variant -- see (-f: ...) notes below
+  -A, --show-all    skip the handlers; show the file with bat --show-all
+                    (tabs, spaces, line endings and other non-printables)
+  -p, --preview     non-interactive output for previewers: no windows,
+                    pagers or players; fits $FZF_PREVIEW_COLUMNS
+  --fzf [DIR]       pick files under DIR (default .) with fzf and
+                    scry --preview, then view the selection
+  --doctor          show which helpers are installed
+  --                end of options (for file names starting with -)
+  -h, --help        show this help
 
 Handlers (extension -> viewer):
 EOF
@@ -81,7 +91,7 @@ doctor() {
             missing=1
         fi
     done
-    echo "Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, open"
+    echo "Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, afinfo, mdls, open"
     [ "$missing" -eq 0 ] || echo "Only install the ones for file types you actually view."
 }
 
@@ -91,12 +101,62 @@ view_one() {
         ls -la -- "$file"
         return
     fi
-    if handler="$(scry_find_handler "$file")"; then
-        "scry_view_$handler" "$file"
+    if [ "$SCRY_RAW" = "1" ]; then
+        scry_require bat "brew install bat  (-A needs bat)"
+        scry_bat_view -- "$file"
+    elif handler="$(scry_find_handler "$file")"; then
+        if [ "$SCRY_PREVIEW" != "1" ]; then
+            "scry_view_$handler" "$file"
+        elif declare -F "scry_preview_$handler" >/dev/null; then
+            "scry_preview_$handler" "$file"
+        else
+            scry_info "$file"
+        fi
     else
         scry_fallback "$file"
     fi
 }
+
+# Pick files with fzf, previewing each with `scry --preview`, then view the
+# selection (Tab to multi-select). Flags given before --fzf carry over.
+fzf_pick() {
+    local dir="${1:-.}" preview selection file
+    scry_require fzf "brew install fzf"
+    preview="$(printf '%q' "$SCRY_SELF") --preview"
+    [ "$SCRY_RAW" = "1" ] && preview="$preview -A"
+    # fzf exits non-zero when cancelled; that's not an error here.
+    selection="$(find "$dir" -type f -not -path '*/.git/*' 2>/dev/null \
+        | fzf -m --preview "$preview -- {}" --preview-window=right:60%)" || return 0
+    # Read the list on fd 3 so each viewer keeps the real terminal as stdin;
+    # interactive ones (pager, visidata) need it.
+    while IFS= read -r file <&3; do
+        view_one "$file"
+    done 3<<<"$selection"
+}
+
+MODE=view
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help)  show_help; exit 0 ;;
+        --doctor)   doctor; exit 0 ;;
+        -f|--full)  FORCE_WINDOW=1 ;;
+        -A|--show-all) SCRY_RAW=1 ;;
+        -p|--preview) SCRY_PREVIEW=1 ;;
+        --fzf)      MODE=fzf ;;
+        --)         shift; break ;;
+        -?*)        echo "scry: unknown option '$1' (try: scry -h)" >&2; exit 2 ;;
+        *)          break ;;
+    esac
+    shift
+done
+
+# A preview never opens a window, so --preview overrides -f.
+[ "$SCRY_PREVIEW" = "1" ] && FORCE_WINDOW=0
+
+if [ "$MODE" = "fzf" ]; then
+    fzf_pick "$@"
+    exit 0
+fi
 
 if [ "$#" -eq 0 ]; then
     if [ -t 0 ]; then
@@ -105,22 +165,6 @@ if [ "$#" -eq 0 ]; then
     fi
     scry_fallback
     exit 0
-fi
-
-case "$1" in
-    -h|--help)
-        show_help
-        exit 0
-        ;;
-    --doctor)
-        doctor
-        exit 0
-        ;;
-esac
-
-if [ "$1" = "-f" ]; then
-    FORCE_WINDOW=1
-    shift
 fi
 
 for f in "$@"; do

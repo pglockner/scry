@@ -9,3 +9,9 @@ scry_view_audio() {
     case "$file" in -*) file="./$file" ;; esac
     afplay "$file"
 }
+
+# Never play sound from a preview; show the file's own metadata instead.
+scry_preview_audio() {
+    scry_info "$1"
+    afinfo "$1" 2>/dev/null | grep -E 'estimated duration|Data format|sample rate' || true
+}

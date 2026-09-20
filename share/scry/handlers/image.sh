@@ -10,3 +10,7 @@ fi
 scry_view_image() {
     scry_show_image "$1"
 }
+
+scry_preview_image() {
+    scry_preview_image_file "$1"
+}

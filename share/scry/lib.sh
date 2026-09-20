@@ -12,10 +12,17 @@ SCRY_HELPER_HINTS=()
 
 # Set to 1 by `scry -f`; handlers use it to pick their "full" variant.
 FORCE_WINDOW=0
+# Set to 1 by `scry --preview`: non-interactive output for previewers like
+# fzf. Handlers must not open windows, pagers or players when this is set.
+SCRY_PREVIEW=0
+# Set to 1 by `scry -A`: skip handlers, show raw bytes through bat --show-all.
+SCRY_RAW=0
 
 # scry_register NAME "EXT EXT ..." "HELP"
 #   Declare a handler. The handler must define scry_view_NAME(), which is
-#   called with one file path. Extensions may be compound ("tar.gz").
+#   called with one file path. It may also define scry_preview_NAME(), used
+#   under --preview; without one, previews show a short info summary
+#   (scry_info) instead. Extensions may be compound ("tar.gz").
 #   If several handlers claim an extension, the one registered last wins,
 #   so user handlers (loaded after the built-in ones) can override them.
 scry_register() {
@@ -76,9 +83,11 @@ scry_require() {
 # columns and misreads width when its pager pipes output internally.
 # Querying /dev/tty (not `[ -t 1 ]`, which only checks our own stdout)
 # gets the controlling terminal's size regardless of where stdout points.
+# Inside an fzf preview pane the terminal is wider than the pane, so
+# fzf's own $FZF_PREVIEW_COLUMNS wins when it's set.
 scry_term_width() {
-    local w=""
-    if [ -e /dev/tty ]; then
+    local w="${FZF_PREVIEW_COLUMNS:-}"
+    if [ -z "$w" ] && [ -e /dev/tty ]; then
         w="$(stty size 2>/dev/null < /dev/tty | awk '{print $2}')"
     fi
     if [ -z "$w" ] && [ -t 1 ]; then
@@ -88,18 +97,25 @@ scry_term_width() {
     printf '%s' "$w"
 }
 
+# Run bat at the right width. Honors the global modes: --preview never
+# pages, always colors, drops the header box and stops after 500 lines;
+# -A adds --show-all.
 scry_bat_view() {
-    local w
+    local w args=()
     w="$(scry_term_width)"
-    if [ -n "$w" ]; then
-        bat --paging=auto --terminal-width="$w" "$@"
+    [ -n "$w" ] && args+=(--terminal-width="$w")
+    if [ "$SCRY_PREVIEW" = "1" ]; then
+        args+=(--paging=never --color=always --style=numbers --line-range=:500)
     else
-        bat --paging=auto "$@"
+        args+=(--paging=auto)
     fi
+    [ "$SCRY_RAW" = "1" ] && args+=(--show-all)
+    bat "${args[@]}" "$@"
 }
 
 # What scry does with a file no handler claims (and with piped stdin).
 scry_fallback() {
+    [ "$SCRY_RAW" = "1" ] && scry_require bat "brew install bat  (-A needs bat)"
     if command -v bat >/dev/null 2>&1; then
         scry_bat_view -- "$@"
     else
@@ -143,6 +159,29 @@ scry_show_image() {
     fi
 }
 
+# scry_info FILE -- short summary: name, kind and size. The safe preview
+# for anything that can't be rendered as text.
+scry_info() {
+    local f="$1" size
+    # shellcheck disable=SC2012  # one known path; only ls gives a human size
+    size="$(ls -lhd -- "$f" | awk '{print $5}')"
+    printf '%s\n%s, %s\n' "$(basename -- "$f")" "$(file -b -- "$f")" "$size"
+}
+
+# Image for a preview pane: forced block output at the pane width, since
+# inline-image protocols (imgcat, kitty) don't work inside fzf.
+scry_preview_image_file() {
+    local w
+    w="$(scry_term_width)"
+    scry_require viu "brew install viu"
+    if [ -n "$w" ]; then
+        viu -b -w "$w" "$1"
+    else
+        viu -b "$1"
+    fi
+}
+
 # bat is the fallback viewer for anything no handler claims, so it belongs
 # to the core rather than to any one handler.
 scry_helper bat "syntax highlighting, yaml, and the fallback viewer" "brew install bat"
+scry_helper fzf "scry --fzf (interactive file picker with previews)" "brew install fzf"

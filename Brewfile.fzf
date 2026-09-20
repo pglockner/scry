@@ -1,0 +1,3 @@
+# Optional: `scry --fzf`, an interactive file picker with live previews.
+# Install with: make deps-fzf   (or: brew bundle --file=Brewfile.fzf)
+brew "fzf"

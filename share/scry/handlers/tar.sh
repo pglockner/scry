@@ -18,3 +18,8 @@ scry_view_tar() {
         tar -tvf "$file"
     fi
 }
+
+scry_preview_tar() {
+    scry_require tar "tar ships with macOS; this shouldn't happen"
+    tar -tvf "$1"
+}

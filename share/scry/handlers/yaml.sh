@@ -5,3 +5,8 @@ scry_view_yaml() {
     scry_require bat "brew install bat"
     scry_bat_view --language=yaml -- "$1"
 }
+
+# scry_bat_view already adapts to preview mode, so it's the same call.
+scry_preview_yaml() {
+    scry_view_yaml "$1"
+}
