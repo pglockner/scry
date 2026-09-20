@@ -47,15 +47,42 @@ Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
 ## Usage
 
 ```
-scry FILE...       view one or more files
-scry -f FILE...    "full" variant: open a Quick Look window or extract archives
-scry DIR           ls -la
-cmd | scry         read stdin like cat
-scry --doctor      check installed helpers
+scry [-f] FILE...
+scry DIR
+cmd | scry
+scry --doctor
+scry -h | --help
 ```
 
-`scry -h` prints the table of handlers and the extensions each one claims.
-Set `SCRY_DEBUG=1` to print the detected terminal width.
+| Invocation         | What it does                                                          |
+| ------------------ | --------------------------------------------------------------------- |
+| `scry FILE...`     | View each file with the viewer for its extension                      |
+| `scry -f FILE...`  | Use the "full" variant of the viewer (see below)                      |
+| `scry DIR`         | List the directory (`ls -la`)                                         |
+| `cmd \| scry`      | Read piped stdin like `cat`, through `bat` if it's installed          |
+| `scry --doctor`    | Show which helpers are installed and what each one enables            |
+| `scry -h`, `--help`| Show usage and the table of handlers with the extensions each claims  |
+
+`-f` must come first, before the file names, and applies to all of them. It
+means "give me the heavier, windowed view". Files with no full variant are
+shown normally.
+
+| File type                        | `scry FILE`               | `scry -f FILE`                   |
+| -------------------------------- | ------------------------- | -------------------------------- |
+| Markdown                         | rendered in the terminal  | Quick Look window                |
+| Images                           | inline in the terminal    | Quick Look window                |
+| STL / 3MF                        | rendered image, inline    | rendered image, Quick Look window |
+| PDF                              | Quick Look window         | Preview.app                      |
+| zip                              | file listing              | extract, open in Finder          |
+| tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder          |
+
+Environment variables:
+
+| Variable                | Effect                                                           |
+| ----------------------- | ---------------------------------------------------------------- |
+| `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
+| `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
+| `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
 
 ## Adding your own file types
 
