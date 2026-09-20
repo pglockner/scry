@@ -1,0 +1,5 @@
+# Optional: STL/3MF rendering.
+# f3d pulls in a heavy dependency chain (VTK, OpenCASCADE, Qt -- several
+# hundred MB). Skip it unless you view 3D models.
+# Install with: make deps-3d   (or: brew bundle --file=Brewfile.3d)
+brew "f3d"

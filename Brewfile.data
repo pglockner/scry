@@ -1,0 +1,3 @@
+# Optional: CSV/TSV/PSV viewing.
+# Install with: make deps-data   (or: brew bundle --file=Brewfile.data)
+brew "visidata"

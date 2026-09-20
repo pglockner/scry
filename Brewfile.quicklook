@@ -1,0 +1,4 @@
+# Optional: rendered markdown in `scry -f` (Quick Look window).
+# Install with: make deps-quicklook, which also registers the Quick Look
+# extension -- macOS doesn't do that automatically for this cask.
+cask "qlmarkdown"

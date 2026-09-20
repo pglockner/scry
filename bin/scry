@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# scry -- like cat, but dispatches to a nicer viewer by file extension.
+#
+# This file is only the dispatcher. Each file type lives in its own handler
+# under share/scry/handlers/ (see the README for the handler API), and
+# shared helpers live in share/scry/lib.sh. Run `scry -h` for the table of
+# installed handlers and `scry --doctor` to see which helpers are present.
+#
+# A recognized extension with a missing viewer is a hard error, not a
+# silent fallback to cat, so a missing helper is obvious.
+set -euo pipefail
+
+# Resolve symlinks so a `make link` install still finds the repo's share/.
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+SCRY_ROOT="$(cd -P "$(dirname "$src")/.." && pwd)"
+SCRY_SHARE="${SCRY_SHARE:-$SCRY_ROOT/share/scry}"
+SCRY_USER_HANDLERS="${SCRY_USER_HANDLERS:-${XDG_CONFIG_HOME:-$HOME/.config}/scry/handlers}"
+
+if [ ! -r "$SCRY_SHARE/lib.sh" ]; then
+    echo "scry: can't find $SCRY_SHARE/lib.sh (broken install? try: make install)" >&2
+    exit 1
+fi
+# shellcheck source=../share/scry/lib.sh
+. "$SCRY_SHARE/lib.sh"
+
+# Built-in handlers first, then the user's, so the user's win on conflicts.
+for f in "$SCRY_SHARE"/handlers/*.sh "$SCRY_USER_HANDLERS"/*.sh; do
+    if [ -f "$f" ]; then
+        # shellcheck disable=SC1090
+        . "$f"
+    fi
+done
+
+show_help() {
+    cat <<'EOF'
+scry - like cat, but dispatches to a nicer viewer based on file extension
+
+Usage:
+  scry FILE...       view one or more files (dispatched independently)
+  scry -f FILE...    force the "full" variant -- see (-f: ...) notes below
+  scry DIR           list directory contents (ls -la)
+  cmd | scry         read piped stdin like cat
+  scry --doctor      show which helpers are installed
+  scry -h | --help   show this help
+
+Handlers (extension -> viewer):
+EOF
+    local i e exts
+    for ((i = 0; i < ${#SCRY_H_NAMES[@]}; i++)); do
+        exts=""
+        for e in ${SCRY_H_EXTS[$i]}; do exts="$exts .$e"; done
+        printf '  %-9s %s\n' "${SCRY_H_NAMES[$i]}" "${exts# }"
+        printf '  %-9s   %s\n' "" "${SCRY_H_HELP[$i]}"
+    done
+    cat <<'EOF'
+  (other)   anything else: bat, or plain cat if bat isn't installed
+
+A recognized extension with a missing viewer is a hard error (not a
+silent fallback), so a missing helper is obvious immediately.
+Set SCRY_DEBUG=1 to print detected terminal width to stderr.
+EOF
+    echo "Handlers load from $SCRY_SHARE/handlers and $SCRY_USER_HANDLERS."
+}
+
+# Report which helpers the loaded handlers declared and whether each is present.
+doctor() {
+    local i bin missing=0
+    echo "scry helpers:"
+    for ((i = 0; i < ${#SCRY_HELPERS[@]}; i++)); do
+        bin="${SCRY_HELPERS[$i]}"
+        if command -v "$bin" >/dev/null 2>&1; then
+            printf '  ok       %-8s %s\n' "$bin" "${SCRY_HELPER_ENABLES[$i]}"
+        else
+            printf '  MISSING  %-8s %s\n           install: %s\n' \
+                "$bin" "${SCRY_HELPER_ENABLES[$i]}" "${SCRY_HELPER_HINTS[$i]}"
+            missing=1
+        fi
+    done
+    echo "Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, open"
+    [ "$missing" -eq 0 ] || echo "Only install the ones for file types you actually view."
+}
+
+view_one() {
+    local file="$1" handler
+    if [ -d "$file" ]; then
+        ls -la -- "$file"
+        return
+    fi
+    if handler="$(scry_find_handler "$file")"; then
+        "scry_view_$handler" "$file"
+    else
+        scry_fallback "$file"
+    fi
+}
+
+if [ "$#" -eq 0 ]; then
+    if [ -t 0 ]; then
+        show_help
+        exit 0
+    fi
+    scry_fallback
+    exit 0
+fi
+
+case "$1" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    --doctor)
+        doctor
+        exit 0
+        ;;
+esac
+
+if [ "$1" = "-f" ]; then
+    FORCE_WINDOW=1
+    shift
+fi
+
+for f in "$@"; do
+    view_one "$f"
+done
