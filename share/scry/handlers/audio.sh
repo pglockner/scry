@@ -15,9 +15,11 @@ scry_view_audio() {
     if command -v mpv >/dev/null 2>&1; then
         # Picked from `scry --fzf`: start paused, so the tags and status
         # line are visible before anything plays (space to start).
-        local pause=()
-        [ "$SCRY_FZF" = "1" ] && pause=(--pause)
-        mpv --no-video "${pause[@]}" -- "$file"
+        # (A plain string, not an array: bash 3.2 under `set -u` treats an
+        # empty "${arr[@]}" as unbound.)
+        local pause=--no-pause
+        [ "$SCRY_FZF" = "1" ] && pause=--pause
+        mpv --no-video "$pause" -- "$file"
         return
     fi
     # afplay can't decode Ogg containers.
