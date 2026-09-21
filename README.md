@@ -84,6 +84,20 @@ the command line, and files with no full variant are shown normally.
 | zip                              | file listing              | extract, open in Finder           |
 | tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
 
+### Quick Look windows (macOS notes)
+
+PDFs, and markdown, images and 3D models under `-f`, open in a Quick Look
+window (`qlmanage -p`). Two macOS quirks:
+
+- **The window may open behind your terminal.** `qlmanage` is launched from a
+  background process, so it doesn't activate itself. scry brings it to the
+  front with AppleScript, which needs Accessibility permission for your
+  terminal app (System Settings -> Privacy & Security -> Accessibility).
+  Without it the window still opens, just not focused.
+- **Markdown under `-f` needs the QLMarkdown extension** (`make deps-quicklook`,
+  which also registers it). macOS asks you to approve the extension the first
+  time it's used.
+
 ### `-A`: non-printable characters
 
 `scry -A FILE` shows tabs, spaces, line endings and other invisible characters
