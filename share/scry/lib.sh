@@ -15,6 +15,9 @@ FORCE_WINDOW=0
 # Set to 1 by `scry --preview`: non-interactive output for previewers like
 # fzf. Handlers must not open windows, pagers or players when this is set.
 SCRY_PREVIEW=0
+# Set to 1 while viewing files picked in `scry --fzf`.
+# shellcheck disable=SC2034  # read by handlers
+SCRY_FZF=0
 # Set to 1 by `scry -A`: skip handlers, show raw bytes through bat --show-all.
 SCRY_RAW=0
 

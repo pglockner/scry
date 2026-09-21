@@ -38,6 +38,7 @@ Only install what you'll use. Each group is its own Brewfile:
 | `make deps`           | bat, glow, viu               | text/code, yaml, markdown, images    |
 | `make deps-data`      | visidata                     | csv / tsv / psv                      |
 | `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf                            |
+| `make deps-audio`     | mpv                          | audio progress, `-f` album art, ogg  |
 | `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
 | `make deps-quicklook` | qlmarkdown (cask)            | rendered markdown for `scry -f`      |
 
@@ -81,6 +82,7 @@ the command line, and files with no full variant are shown normally.
 | Images                           | inline in the terminal    | Quick Look window                 |
 | STL / 3MF                        | rendered image, inline    | rendered image, Quick Look window |
 | PDF                              | Quick Look window         | Preview.app                       |
+| Audio                            | plays (mpv, else afplay)  | mpv window with album art        |
 | zip                              | file listing              | extract, open in Finder           |
 | tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
 
@@ -132,15 +134,17 @@ What each type shows:
 | CSV / TSV / PSV                   | first 30 rows as aligned columns                           |
 | zip, tar, rtf                     | file listing / converted text                              |
 | PDF, audio, video                 | a short summary (kind, size, pages or duration); nothing plays or opens |
+| Audio, with mpv installed         | the summary plus the file's tags (artist, album, title...) |
 | Anything from a handler with no preview function | a short summary, so nothing interactive ever runs in a preview pane |
 
 `--preview` overrides `-f`, and combines with `-A`
 (`fzf --preview 'scry --preview -A {}'`).
 
 `scry --fzf` wraps all of this into a file picker: it lists the files under a
-directory, previews each with `scry --preview`, and views what you select
+directory, sorted with the first one selected, previews each with `scry --preview`, and views what you select
 (Tab to select several). Flags given before it carry over, so `scry -A --fzf`
-previews and views raw.
+previews and views raw. Audio picked here opens in mpv paused (if mpv is
+installed), so you can see its tags before pressing space to play.
 
 ```sh
 scry --fzf            # files under the current directory
@@ -199,6 +203,7 @@ What's available to handlers:
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
 | `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
+| `$SCRY_FZF`                             | `1` while viewing files picked in `scry --fzf`                 |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
 | `scry_show_image FILE`                  | Show an image the way scry does                                |
 | `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |
