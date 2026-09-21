@@ -143,8 +143,7 @@ What each type shows:
 `scry --fzf` wraps all of this into a file picker: it lists the files under a
 directory, sorted with the first one selected, previews each with `scry --preview`, and views what you select
 (Tab to select several). Flags given before it carry over, so `scry -A --fzf`
-previews and views raw. Audio picked here opens in mpv paused (if mpv is
-installed), so you can see its tags before pressing space to play.
+previews and views raw.
 
 ```sh
 scry --fzf            # files under the current directory
@@ -203,7 +202,6 @@ What's available to handlers:
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
 | `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
-| `$SCRY_FZF`                             | `1` while viewing files picked in `scry --fzf`                 |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
 | `scry_show_image FILE`                  | Show an image the way scry does                                |
 | `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |

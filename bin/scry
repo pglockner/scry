@@ -129,8 +129,6 @@ fzf_pick() {
         | sort | fzf -m --layout=reverse --preview "$preview -- {}" --preview-window=right:60%)" || return 0
     # Read the list on fd 3 so each viewer keeps the real terminal as stdin;
     # interactive ones (pager, visidata) need it.
-    # shellcheck disable=SC2034  # read by the audio handler
-    SCRY_FZF=1
     while IFS= read -r file <&3; do
         view_one "$file"
     done 3<<<"$selection"
