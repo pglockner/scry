@@ -158,6 +158,28 @@ if [ "$MODE" = "fzf" ]; then
     exit 0
 fi
 
+# `scry the future`, when there are no such files.
+if [ "$#" -eq 2 ] && [ "$1" = the ] && [ "$2" = future ] \
+    && [ ! -e the ] && [ ! -e future ]; then
+    fortunes=(
+        "you will soon \`brew install\` something you never use."
+        "a .DS_Store approaches from the north."
+        "your next grep finds exactly one match. The wrong one."
+        "a stranger will send you a .heic. Do not be afraid."
+        "beware the file named final_v2_REAL.docx."
+    )
+    cat <<'EOF'
+        .-""-.
+       / .  * \
+      |  *  .  |
+       \ .  * /
+        '-..-'
+       _/____\_
+EOF
+    printf '\nThe mists part... %s\n' "${fortunes[RANDOM % ${#fortunes[@]}]}"
+    exit 0
+fi
+
 if [ "$#" -eq 0 ]; then
     if [ -t 0 ]; then
         show_help
