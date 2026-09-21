@@ -21,7 +21,7 @@ output you did.
 ## Install
 
 ```sh
-git clone <this repo> && cd scry
+git clone https://github.com/pglockner/scry.git && cd scry
 make install          # copies to ~/.local (override: make install PREFIX=/usr/local)
 make deps             # core helpers: bat, glow, viu
 ```
