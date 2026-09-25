@@ -24,8 +24,11 @@ help:
 	@echo "make doctor               show which helpers are installed"
 
 # Replaces the handlers dir wholesale, so a handler renamed or removed in
-# this version doesn't linger and load alongside its successor.
+# this version doesn't linger and load alongside its successor. Removes
+# bin/scry first too: after `make link` it's a symlink to this checkout,
+# and BSD install (macOS) refuses to copy a file onto itself.
 install:
+	rm -f "$(BINDIR)/scry"
 	rm -rf "$(SHAREDIR)/handlers"
 	install -d "$(BINDIR)" "$(SHAREDIR)/handlers"
 	install -m 755 bin/scry "$(BINDIR)/scry"
