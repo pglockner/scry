@@ -26,3 +26,11 @@ jobs:
       - run: make test
         env:
           SCRY_BASH: ${{ matrix.bash }}
+      - name: install, link, and install over a link
+        run: |
+          p="$RUNNER_TEMP/prefix"
+          make install PREFIX="$p" && "$p/bin/scry" --doctor
+          make link PREFIX="$p" && test -L "$p/bin/scry"
+          make install PREFIX="$p" && test ! -L "$p/bin/scry" && "$p/bin/scry" --doctor
+          git diff --exit-code   # installing must never touch the checkout
+          make uninstall PREFIX="$p" && test ! -e "$p/bin/scry"
