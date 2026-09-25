@@ -1,0 +1,7 @@
+# Linux only: what scry uses there in place of macOS's built-in tools.
+# Your distro packages these too (see the README); this is for Homebrew users.
+# Install with: make deps-linux   (or: brew bundle --file=Brewfile.linux)
+brew "pandoc"    # rtf/docx/odt as text (textutil on macOS)
+brew "antiword"  # .doc as text
+brew "poppler"   # pdfinfo: page counts in pdf previews (mdls on macOS)
+brew "ffmpeg"    # ffprobe: audio/video details in previews; ffplay plays audio
