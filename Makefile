@@ -5,7 +5,7 @@ QLMD_APPEX = /Applications/QLMarkdown.app/Contents/PlugIns/Markdown QL Extension
 DEP_FORMULAE = bat glow viu visidata f3d fzf mpv
 
 .PHONY: help install link uninstall deps deps-data deps-3d deps-audio deps-fzf deps-quicklook \
-	uninstall-quicklook uninstall-deps lint doctor
+	uninstall-quicklook uninstall-deps lint test doctor
 
 help:
 	@echo "make install              copy scry to $(PREFIX) (override with PREFIX=...)"
@@ -20,9 +20,13 @@ help:
 	@echo "make uninstall-quicklook  undo deps-quicklook"
 	@echo "make uninstall-deps       optionally brew-uninstall the helpers (asks first)"
 	@echo "make lint                 shellcheck the scripts"
+	@echo "make test                 run the test suite (stubs every helper)"
 	@echo "make doctor               show which helpers are installed"
 
+# Replaces the handlers dir wholesale, so a handler renamed or removed in
+# this version doesn't linger and load alongside its successor.
 install:
+	rm -rf "$(SHAREDIR)/handlers"
 	install -d "$(BINDIR)" "$(SHAREDIR)/handlers"
 	install -m 755 bin/scry "$(BINDIR)/scry"
 	install -m 644 share/scry/lib.sh "$(SHAREDIR)/lib.sh"
@@ -83,7 +87,10 @@ uninstall-deps:
 	if [ "$$ans" = y ] || [ "$$ans" = Y ]; then brew uninstall $$installed; else echo "Skipped."; fi
 
 lint:
-	shellcheck bin/scry share/scry/lib.sh share/scry/handlers/*.sh
+	shellcheck bin/scry share/scry/lib.sh share/scry/handlers/*.sh test/run.sh
+
+test:
+	test/run.sh
 
 doctor:
 	@bin/scry --doctor

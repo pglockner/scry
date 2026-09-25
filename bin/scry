@@ -7,7 +7,8 @@
 # installed handlers and `scry --doctor` to see which helpers are present.
 #
 # A recognized extension with a missing viewer is a hard error, not a
-# silent fallback to cat, so a missing helper is obvious.
+# silent fallback to cat, so a missing helper is obvious. Like cat, an error
+# on one file doesn't stop the rest; the exit status is 1 if any failed.
 set -euo pipefail
 
 # Resolve symlinks so a `make link` install still finds the repo's share/.
@@ -44,14 +45,16 @@ scry - like cat, but dispatches to a nicer viewer based on file extension
 Usage:
   scry [OPTIONS] FILE...   view one or more files (dispatched independently)
   scry DIR                 list directory contents (ls -la)
-  cmd | scry               read piped stdin like cat
+  cmd | scry               read piped stdin like cat (also: FILE is -)
 
-Options:
+Options (may come before or after files; short ones combine, e.g. -fA):
   -f, --full        force the "full" variant -- see (-f: ...) notes below
   -A, --show-all    skip the handlers; show the file with bat --show-all
                     (tabs, spaces, line endings and other non-printables)
   -p, --preview     non-interactive output for previewers: no windows,
                     pagers or players; fits $FZF_PREVIEW_COLUMNS
+  -t, --type EXT    treat every file (and stdin) as if it ended in .EXT,
+                    e.g. `curl -s URL | scry -t md`
   --fzf [DIR]       pick files under DIR (default .) with fzf and
                     scry --preview, then view the selection
   --doctor          show which helpers are installed
@@ -96,66 +99,143 @@ doctor() {
 }
 
 view_one() {
-    local file="$1" handler
+    local file="$1" name handler
     if [ -d "$file" ]; then
         ls -la -- "$file"
         return
     fi
+    if [ "$file" != - ]; then
+        if [ ! -e "$file" ]; then
+            echo "scry: $file: No such file or directory" >&2
+            return 1
+        elif [ ! -r "$file" ]; then
+            echo "scry: $file: Permission denied" >&2
+            return 1
+        fi
+        # Not every viewer takes `--` (afplay, imgcat, bsdtar -f don't), so
+        # pin a dash-leading name as a path once, here, for all of them.
+        case "$file" in -*) file="./$file" ;; esac
+    fi
     if [ "$SCRY_RAW" = "1" ]; then
         scry_require bat "brew install bat  (-A needs bat)"
         scry_bat_view -- "$file"
-    elif handler="$(scry_find_handler "$file")"; then
-        if [ "$SCRY_PREVIEW" != "1" ]; then
-            "scry_view_$handler" "$file"
-        elif declare -F "scry_preview_$handler" >/dev/null; then
-            "scry_preview_$handler" "$file"
-        else
-            scry_info "$file"
-        fi
-    else
+        return
+    fi
+    name="$file"
+    [ -n "$SCRY_TYPE" ] && name="stdin.$SCRY_TYPE"
+    if ! handler="$(scry_find_handler "$name")"; then
         scry_fallback "$file"
+        return
+    fi
+    if [ "$file" = - ]; then
+        spool_stdin
+        file="$SCRY_TMP/$name"
+    fi
+    if [ "$SCRY_PREVIEW" != "1" ]; then
+        "scry_view_$handler" "$file"
+    elif declare -F "scry_preview_$handler" >/dev/null; then
+        "scry_preview_$handler" "$file"
+    else
+        scry_info "$file"
     fi
 }
 
+# Handlers take a path, so save stdin to $SCRY_TMP/stdin.EXT (Quick Look and
+# friends go by extension), then give interactive viewers (visidata, pagers)
+# the terminal back as their stdin.
+spool_stdin() {
+    scry_tmp
+    cat > "$SCRY_TMP/stdin.$SCRY_TYPE"
+    if { : </dev/tty; } 2>/dev/null; then
+        exec </dev/tty
+    fi
+}
+
+# view FILE -- view_one in a subshell of its own, so a handler's `exit` or
+# a failed command ends only this file's view, and per-file state
+# ($SCRY_TMP, $SCRY_DETACHED) starts fresh and is cleaned up after it.
+# A failure sets SCRY_STATUS=1 rather than returning it: calling view in
+# `view f || ...` would make bash ignore set -e inside the handler.
+SCRY_STATUS=0
+view() {
+    set +e
+    (
+        set -e
+        trap scry_cleanup EXIT
+        trap 'exit 143' TERM HUP   # so a killed preview still cleans up
+        view_one "$1"
+    )
+    # shellcheck disable=SC2181  # `if ( ... )` is the very context to avoid
+    [ "$?" -eq 0 ] || SCRY_STATUS=1
+    set -e
+}
+
 # Pick files with fzf, previewing each with `scry --preview`, then view the
-# selection (Tab to multi-select). Flags given before --fzf carry over.
+# selection (Tab to multi-select). Flags given with --fzf carry over.
 fzf_pick() {
     local dir="${1:-.}" preview selection file
     scry_require fzf "brew install fzf"
     preview="$(printf '%q' "$SCRY_SELF") --preview"
     [ "$SCRY_RAW" = "1" ] && preview="$preview -A"
+    [ -n "$SCRY_TYPE" ] && preview="$preview -t $(printf '%q' "$SCRY_TYPE")"
     # fzf exits non-zero when cancelled; that's not an error here.
     selection="$(find "$dir" -type f -not -path '*/.git/*' 2>/dev/null \
         | sort | fzf -m --layout=reverse --preview "$preview -- {}" --preview-window=right:60%)" || return 0
     # Read the list on fd 3 so each viewer keeps the real terminal as stdin;
     # interactive ones (pager, visidata) need it.
     while IFS= read -r file <&3; do
-        view_one "$file"
+        view "$file"
     done 3<<<"$selection"
 }
 
+usage_error() {
+    echo "scry: $1 (try: scry -h)" >&2
+    exit 2
+}
+
+# Options may come anywhere (until --); everything else is a file.
 MODE=view
+files=()
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        -h|--help)  show_help; exit 0 ;;
-        --doctor)   doctor; exit 0 ;;
-        -f|--full)  FORCE_WINDOW=1 ;;
-        -A|--show-all) SCRY_RAW=1 ;;
-        -p|--preview) SCRY_PREVIEW=1 ;;
-        --fzf)      MODE=fzf ;;
-        --)         shift; break ;;
-        -?*)        echo "scry: unknown option '$1' (try: scry -h)" >&2; exit 2 ;;
-        *)          break ;;
+        -h|--help)      show_help; exit 0 ;;
+        --doctor)       doctor; exit 0 ;;
+        -f|--full)      FORCE_WINDOW=1 ;;
+        -A|--show-all)  SCRY_RAW=1 ;;
+        -p|--preview)   SCRY_PREVIEW=1 ;;
+        --fzf)          MODE=fzf ;;
+        -t|--type)
+            [ "$#" -ge 2 ] || usage_error "option '$1' needs an extension"
+            SCRY_TYPE="$2"
+            shift
+            ;;
+        --type=*)       SCRY_TYPE="${1#--type=}" ;;
+        -t?*)           SCRY_TYPE="${1#-t}" ;;
+        --)             shift; files+=("$@"); break ;;
+        -[!-]?*)
+            # Split combined short options: -fA -> -f -A.
+            rest="${1#-?}"
+            set -- "${1%"$rest"}" "-$rest" "${@:2}"
+            continue
+            ;;
+        -?*)            usage_error "unknown option '$1'" ;;
+        *)              files+=("$1") ;;
     esac
     shift
 done
+# bash 3.2 treats "${files[@]}" of an empty array as unbound under set -u.
+set -- ${files[@]+"${files[@]}"}
+
+# -t md, -t .md and -t MD all mean the same; the type ends up in a file name.
+SCRY_TYPE="$(scry_lower "${SCRY_TYPE#.}")"
+case "$SCRY_TYPE" in */*) usage_error "bad type '$SCRY_TYPE'" ;; esac
 
 # A preview never opens a window, so --preview overrides -f.
 [ "$SCRY_PREVIEW" = "1" ] && FORCE_WINDOW=0
 
 if [ "$MODE" = "fzf" ]; then
     fzf_pick "$@"
-    exit 0
+    exit "$SCRY_STATUS"
 fi
 
 # `scry the future`, when there are no such files.
@@ -181,14 +261,14 @@ EOF
 fi
 
 if [ "$#" -eq 0 ]; then
-    if [ -t 0 ]; then
+    if [ -t 0 ] && [ -z "$SCRY_TYPE" ]; then
         show_help
         exit 0
     fi
-    scry_fallback
-    exit 0
+    set -- -
 fi
 
 for f in "$@"; do
-    view_one "$f"
+    view "$f"
 done
+exit "$SCRY_STATUS"
