@@ -232,6 +232,7 @@ What's available to handlers:
 | `scry_term_width`                       | Print the width to render at (the fzf pane's, if previewing)   |
 | `scry_qlmanage_preview FILE`            | Open a Quick Look window and bring it to the front             |
 | `scry_lower STRING`                     | Lowercase a string (bash 3.2 has no `${var,,}`)                |
+| `scry_stem FILE`                        | FILE's name without directory or extension (`a.tar.gz` -> `a`) |
 
 Each file is viewed in a subshell of its own, so a handler may simply `exit 1`
 or `return 1` on failure: that ends only this file's view, and scry moves on

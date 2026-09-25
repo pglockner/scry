@@ -146,6 +146,17 @@ scry_tmp() {
     [ -n "$SCRY_TMP" ] || SCRY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/scry.XXXXXX")"
 }
 
+# scry_stem FILE -- print FILE's name without its directory or extension,
+# compound ones included (notes.tar.gz -> notes). For naming what scry makes
+# from FILE, so a Finder window says "notes", not "scry.McJ2WU".
+scry_stem() {
+    local stem
+    stem="$(basename -- "$1")"
+    stem="${stem%.*}"
+    stem="${stem%.tar}"
+    printf '%s' "${stem:-archive}"
+}
+
 # Remove this file's temp dir -- unless a detached window may still be
 # reading from it. Then it's left for the OS's periodic temp cleanup, since
 # deleting it would race the window's open (and usually win).

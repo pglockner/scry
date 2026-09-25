@@ -6,11 +6,14 @@ scry_register tar "tar tgz tbz tbz2 txz tar.gz tar.bz2 tar.xz" \
 # argument directly, and a literal `--` would be misparsed as the archive
 # filename itself. (scry already turned a dash-leading name into ./-name.)
 scry_view_tar() {
+    local dest
     scry_require tar "tar ships with macOS; this shouldn't happen"
     if [ "$FORCE_WINDOW" = "1" ]; then
         scry_tmp
-        tar -xf "$1" -C "$SCRY_TMP"
-        scry_open "$SCRY_TMP"
+        dest="$SCRY_TMP/$(scry_stem "$1")"
+        mkdir "$dest"
+        tar -xf "$1" -C "$dest"
+        scry_open "$dest"
     else
         tar -tvf "$1"
     fi

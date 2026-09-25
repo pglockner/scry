@@ -38,7 +38,7 @@ stub f3d 'for a; do case "$a" in --output=*) echo png > "${a#--output=}" ;; esac
 # installed on this machine can leak into a test.
 SYSBIN="$WORK/sysbin"
 mkdir -p "$SYSBIN"
-for b in awk basename cat column cut dirname file grep head ls mktemp pwd readlink sleep \
+for b in awk basename cat column cut dirname file grep head ls mkdir mktemp pwd readlink sleep \
     rm sort stty tar touch tput tr unzip find env sh wc; do
     p="$(command -v "$b")" && ln -s "$p" "$SYSBIN/$b"
 done
@@ -141,6 +141,14 @@ expect_called "qlmanage -p" "stl -f -> Quick Look"
 expect_tmp 1 "temp dir kept for a detached window"
 rm -rf "${T:?}"/*
 run -p part.stl;        expect_silent qlmanage "stl preview is inline"
+# -f extracts into a folder named for the archive, so Finder's window
+# title is "a" rather than the temp dir's random name.
+run -f a.tar.gz;        expect_rc 0 "tar -f"
+dest="$(find "$T" -mindepth 2 -maxdepth 2 -type d)"
+case "$dest" in "$T"/scry.*/a) ok ;; *) bad "tar -f extracts into a folder named a" "$(find "$T")" ;; esac
+expect_called "open -- $dest" "tar -f opens that folder in Finder"
+if [ -f "$dest/plain.txt" ]; then ok; else bad "tar -f extracts the files" "$(find "$T")"; fi
+rm -rf "${T:?}"/*
 
 # --- previews never open anything ---
 run -p doc.pdf song.ogg clip.mp4 notes.md

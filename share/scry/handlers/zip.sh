@@ -2,11 +2,14 @@
 scry_register zip "zip jar whl" "unzip -l (-f: extract, open in Finder)"
 
 scry_view_zip() {
+    local dest
     scry_require unzip "unzip ships with macOS; this shouldn't happen"
     if [ "$FORCE_WINDOW" = "1" ]; then
         scry_tmp
-        unzip -q -- "$1" -d "$SCRY_TMP"
-        scry_open "$SCRY_TMP"
+        dest="$SCRY_TMP/$(scry_stem "$1")"
+        mkdir "$dest"
+        unzip -q -- "$1" -d "$dest"
+        scry_open "$dest"
     else
         unzip -l -- "$1"
     fi
