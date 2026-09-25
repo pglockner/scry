@@ -4,18 +4,18 @@ scry_register tar "tar tgz tbz tbz2 txz tar.gz tar.bz2 tar.xz" \
 
 # No `--` before the filename below: bsdtar's -f binds to its next
 # argument directly, and a literal `--` would be misparsed as the archive
-# filename itself.
+# filename itself. (scry already turned a dash-leading name into ./-name.)
 scry_view_tar() {
-    local file="$1" tmpdir
+    local dest
     scry_require tar "tar ships with macOS; this shouldn't happen"
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_require open "open ships with macOS; this shouldn't happen"
-        # Doesn't clean up the temp dir: Finder needs it after this exits.
-        tmpdir="$(mktemp -d)"
-        tar -xf "$file" -C "$tmpdir"
-        open -- "$tmpdir"
+        scry_tmp
+        dest="$SCRY_TMP/$(scry_stem "$1")"
+        mkdir "$dest"
+        tar -xf "$1" -C "$dest"
+        scry_open "$dest"
     else
-        tar -tvf "$file"
+        tar -tvf "$1"
     fi
 }
 

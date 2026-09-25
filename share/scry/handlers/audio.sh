@@ -17,16 +17,14 @@ scry_view_audio() {
         return
     fi
     # afplay can't decode Ogg containers.
-    case "$(printf '%s' "$file" | tr '[:upper:]' '[:lower:]')" in
+    case "$(scry_lower "$file")" in
         *.ogg|*.oga|*.opus)
             echo "scry: afplay can't play Ogg; brew install mpv (or: make deps-audio)" >&2
             exit 1
             ;;
     esac
     scry_require afplay "afplay ships with macOS; this shouldn't happen"
-    # afplay doesn't support `--` as an options terminator, so a
-    # dash-leading filename needs a ./ prefix instead.
-    case "$file" in -*) file="./$file" ;; esac
+    # afplay doesn't take `--`; scry already made a dash-leading name ./-name.
     afplay "$file"
 }
 

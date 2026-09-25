@@ -1,4 +1,5 @@
 # Optional: audio playback with a progress line, `scry -f` window
 # with album art, and ogg/opus. Without it, scry falls back to afplay.
+# Also plays the video formats QuickTime can't: mkv, webm, avi.
 # Install with: make deps-audio   (or: brew bundle --file=Brewfile.audio)
 brew "mpv"

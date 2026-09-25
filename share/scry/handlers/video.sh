@@ -1,9 +1,15 @@
 # shellcheck shell=bash
-scry_register video "mp4 mov m4v" 'open -a "QuickTime Player"'
+scry_register video "mp4 mov m4v mkv webm avi" \
+    'open -a "QuickTime Player" (mkv, webm, avi: mpv)'
 
 scry_view_video() {
-    scry_require open "open ships with macOS; this shouldn't happen"
-    open -a "QuickTime Player" -- "$1"
+    case "$(scry_lower "$1")" in
+        *.mp4|*.mov|*.m4v) scry_open "$1" "QuickTime Player" ;;
+        *)
+            scry_require mpv "brew install mpv (QuickTime can't play this format)"
+            mpv -- "$1"
+            ;;
+    esac
 }
 
 scry_preview_video() {

@@ -17,6 +17,13 @@ FORCE_WINDOW=0
 SCRY_PREVIEW=0
 # Set to 1 by `scry -A`: skip handlers, show raw bytes through bat --show-all.
 SCRY_RAW=0
+# Set by `scry -t EXT`: dispatch every file as if it had extension EXT.
+SCRY_TYPE=""
+
+# Per-file state. Each file is viewed in its own subshell, so these start
+# fresh for every file and scry_cleanup runs when that file's view ends.
+SCRY_TMP=""        # private temp dir for this file, made by scry_tmp
+SCRY_DETACHED=0    # 1 once a window outlives scry (Quick Look, open)
 
 # scry_register NAME "EXT EXT ..." "HELP"
 #   Declare a handler. The handler must define scry_view_NAME(), which is
@@ -51,11 +58,16 @@ scry_helper() {
     SCRY_HELPER_HINTS+=("$3")
 }
 
+# scry_lower STRING -- print STRING lowercased (bash 3.2 has no ${var,,}).
+scry_lower() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 # scry_find_handler FILE -- print the name of the handler that claims FILE;
 # return 1 if none does.
 scry_find_handler() {
     local lower i e
-    lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+    lower="$(scry_lower "$1")"
     for ((i = ${#SCRY_H_NAMES[@]} - 1; i >= 0; i--)); do
         for e in ${SCRY_H_EXTS[$i]}; do
             case "$lower" in
@@ -114,12 +126,54 @@ scry_bat_view() {
 }
 
 # What scry does with a file no handler claims (and with piped stdin).
+# Under -t, the type doubles as bat's language, so `curl ... | scry -t json`
+# is highlighted even though no handler claims json.
 scry_fallback() {
+    local args=()
     [ "$SCRY_RAW" = "1" ] && scry_require bat "brew install bat  (-A needs bat)"
     if command -v bat >/dev/null 2>&1; then
-        scry_bat_view -- "$@"
+        [ -n "$SCRY_TYPE" ] && args+=(--language="$SCRY_TYPE")
+        scry_bat_view ${args[@]+"${args[@]}"} -- "$@"
     else
         cat -- "$@"
+    fi
+}
+
+# scry_tmp -- make sure $SCRY_TMP is a private temp dir for the file being
+# viewed. It's removed when that file's view ends (see scry_cleanup), so
+# handlers never clean up after themselves.
+scry_tmp() {
+    [ -n "$SCRY_TMP" ] || SCRY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/scry.XXXXXX")"
+}
+
+# scry_stem FILE -- print FILE's name without its directory or extension,
+# compound ones included (notes.tar.gz -> notes). For naming what scry makes
+# from FILE, so a Finder window says "notes", not "scry.McJ2WU".
+scry_stem() {
+    local stem
+    stem="$(basename -- "$1")"
+    stem="${stem%.*}"
+    stem="${stem%.tar}"
+    printf '%s' "${stem:-archive}"
+}
+
+# Remove this file's temp dir -- unless a detached window may still be
+# reading from it. Then it's left for the OS's periodic temp cleanup, since
+# deleting it would race the window's open (and usually win).
+scry_cleanup() {
+    if [ -n "$SCRY_TMP" ] && [ "$SCRY_DETACHED" != "1" ]; then
+        rm -rf "$SCRY_TMP"
+    fi
+}
+
+# scry_open FILE [APP] -- hand FILE to macOS `open`, optionally with APP.
+scry_open() {
+    scry_require open "open ships with macOS; this shouldn't happen"
+    SCRY_DETACHED=1
+    if [ -n "${2:-}" ]; then
+        open -a "$2" -- "$1"
+    else
+        open -- "$1"
     fi
 }
 
@@ -130,6 +184,7 @@ scry_fallback() {
 scry_qlmanage_preview() {
     local file="$1"
     scry_require qlmanage "qlmanage ships with macOS; this shouldn't happen"
+    SCRY_DETACHED=1
     qlmanage -p "$file" >/dev/null 2>&1 &
     osascript -e '
         tell application "System Events"
