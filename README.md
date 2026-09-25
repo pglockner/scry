@@ -216,12 +216,15 @@ Install the helpers with your package manager. On Debian and Ubuntu:
 sudo apt install bat fzf visidata mpv f3d pandoc antiword poppler-utils ffmpeg xdg-utils
 ```
 
-Debian and Ubuntu package bat as `batcat`; scry finds it under either name.
-They don't package glow or viu: use Homebrew (`brew install glow viu`), or
+That command leaves out glow and viu because `apt` can't install them:
+Debian and Ubuntu have no packages for either. Like on macOS, they're a
+separate install. Use Homebrew (`brew install glow viu`), or
 `go install github.com/charmbracelet/glow@latest` and `cargo install viu`.
-Other distros' names are mostly the same (`poppler` instead of
-`poppler-utils` on Arch). `scry --doctor` gives install commands for your
-package manager.
+
+Debian and Ubuntu also package bat under the name `batcat`; scry finds it
+under either name. Other distros mostly use the same package names
+(`poppler` instead of `poppler-utils` on Arch). `scry --doctor` gives install
+commands for your package manager.
 
 **WSL (Windows):** scry runs in WSL like on any Linux, and `-f` views open in
 Windows apps when `wslview` is installed (`sudo apt install wslu`). In
