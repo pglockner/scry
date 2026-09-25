@@ -26,9 +26,11 @@ stub() {
 for b in viu vd mpv qlmanage osascript open textutil afplay mdls fzf imgcat; do
     stub "$b"
 done
-# Without a terminal on stdin, scry feeds glow the file on stdin.
-stub glow '[ -t 0 ] || cat'
-stub bat 'for a; do case "$a" in -) cat ;; -*) ;; *) cat -- "$a" ;; esac; done'
+# bat and glow print what they were given, whether a path or - (stdin):
+# scry passes glow the file on stdin unless stdin is a terminal.
+PRINT_INPUT='for a; do case "$a" in -) cat ;; -*) ;; *) [ ! -f "$a" ] || cat -- "$a" ;; esac; done'
+stub glow "$PRINT_INPUT"
+stub bat "$PRINT_INPUT"
 # f3d "renders" by writing a non-empty --output file.
 stub f3d 'for a; do case "$a" in --output=*) echo png > "${a#--output=}" ;; esac; done'
 
@@ -46,9 +48,11 @@ ok()  { pass=$((pass + 1)); }
 bad() { fail=$((fail + 1)); printf 'FAIL: %s\n' "$1"; [ -z "${2:-}" ] || printf '%s\n' "$2" | sed 's/^/    /'; }
 
 # run ARGS... -- run scry with the stubs; sets $out (stdout+stderr), $rc.
+# Run from a terminal, scry would measure it; FZF_PREVIEW_COLUMNS takes
+# precedence, so it pins the width and the tests pass anywhere.
 run() {
     : > "$LOG"
-    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" \
+    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" FZF_PREVIEW_COLUMNS=80 \
         SCRY_USER_HANDLERS="$WORK/handlers" "$BASH_UNDER_TEST" "$ROOT/bin/scry" "$@" 2>&1 < "${STDIN:-/dev/null}")"
     rc=$?
 }
@@ -85,7 +89,7 @@ printf '%%PDF-1.4\n' > "$F/doc.pdf"
 (cd "$F" && tar -cf a.tar.gz plain.txt)
 
 # --- dispatch ---
-run notes.md;           expect_called "glow -p -" "md -> glow"; expect_out "# hi" "md -> glow gets the file"
+run notes.md;           expect_called "glow -p -w 80 -" "md -> glow"; expect_out "# hi" "md -> glow gets the file"
 run LOUD.MD;            expect_called "glow" "extensions are case-insensitive"
 run t.csv;              expect_called "vd t.csv" "csv -> visidata"
 run plain.txt;          expect_out "plain text" "unclaimed -> bat"
@@ -99,7 +103,7 @@ run .;                  expect_out "notes.md" "dir -> ls"
 
 # --- options ---
 run notes.md -f;        expect_called "qlmanage -p notes.md" "option after the file"
-run -fA plain.txt;      expect_called "bat --paging=auto --show-all -- plain.txt" "bundled -fA"
+run -fA plain.txt;      expect_called "bat --terminal-width=80 --paging=auto --show-all -- plain.txt" "bundled -fA"
 run -p -f notes.md;     expect_silent qlmanage "--preview overrides -f"
 run -- -dash.csv;       expect_called "vd ./-dash.csv" "dash-leading name becomes ./-name"
 run -z;                 expect_rc 2 "unknown option"
@@ -111,10 +115,10 @@ run the future;         expect_out "The mists part" "the future"
 # --- -t and stdin ---
 run -t md plain.txt;    expect_called "glow" "-t md on a file"; expect_out "plain text" "-t md on a file"
 STDIN="$F/notes.md" run -t .MD
-expect_called "glow -p -" "-t on stdin"; expect_out "# hi" "-t on stdin spools to a file"
+expect_called "glow -p -w 80" "-t on stdin"; expect_out "# hi" "-t on stdin spools to a file"
 expect_tmp 0 "spooled stdin is cleaned up"
 STDIN="$F/plain.txt" run -t json
-expect_called "bat --paging=auto --language=json -- -" "unclaimed -t type -> bat --language"
+expect_called "bat --terminal-width=80 --paging=auto --language=json -- -" "unclaimed -t type -> bat --language"
 STDIN="$F/plain.txt" run; expect_out "plain text" "piped stdin -> bat"
 
 # --- errors don't stop the other files, and are reported like cat ---
