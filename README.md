@@ -8,13 +8,15 @@ scry photo.heic      # inline image (imgcat in iTerm2, viu elsewhere)
 scry data.csv        # interactive table (visidata)
 scry part.stl        # rendered preview of a 3D model (f3d)
 scry archive.tar.gz  # archive listing
-scry report.docx     # converted to plain text (textutil)
+scry report.docx     # converted to plain text (textutil, or pandoc on Linux)
 scry main.py         # syntax-highlighted (bat), or plain cat without bat
 curl -s URL | scry -t md   # stdin, viewed as markdown
 ```
 
-macOS only: it relies on `qlmanage`, `textutil`, `afplay` and `open`. Pure
-bash (works with the stock macOS bash 3.2), no zsh needed.
+Runs on macOS and Linux, including WSL on Windows. It's pure bash (it
+works with macOS's stock bash 3.2), so no zsh is needed. On macOS it uses
+the system's own tools (Quick Look, `textutil`, `afplay`, `open`); on Linux,
+their usual counterparts (see [Linux](#linux)).
 
 A recognized extension whose viewer isn't installed is an error with an
 install hint, never a silent fallback, so you always know why you got the
@@ -26,15 +28,17 @@ viewer) doesn't stop the others; scry exits 1 if any of them failed.
 ```sh
 git clone https://github.com/pglockner/scry.git && cd scry
 make install          # copies to ~/.local (override: make install PREFIX=/usr/local)
-make deps             # core helpers: bat, glow, viu
+make deps             # core helpers: bat, glow, viu (Homebrew)
 ```
 
 Make sure `~/.local/bin` is on your `PATH`. `make install` tells you if it isn't.
-`make help` lists every target.
+`make help` lists every target. On Linux, you can use your distro's packages
+instead of Homebrew: see [Linux](#linux).
 
 ## Pick your helpers
 
-Only install what you'll use. Each group is its own Brewfile:
+Only install what you'll use. Each group is its own Brewfile (Homebrew runs
+on Linux too):
 
 | Command               | Installs                     | Enables                              |
 | --------------------- | ---------------------------- | ------------------------------------ |
@@ -43,11 +47,13 @@ Only install what you'll use. Each group is its own Brewfile:
 | `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf / obj / ply / gltf / step  |
 | `make deps-audio`     | mpv                          | audio progress, `-f` album art, ogg, mkv / webm / avi video |
 | `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
-| `make deps-quicklook` | qlmarkdown (cask)            | rendered markdown for `scry -f`      |
+| `make deps-linux`     | pandoc, antiword, poppler, ffmpeg | Linux only: documents, pdf page counts, media details, audio without mpv |
+| `make deps-quicklook` | qlmarkdown (cask)            | macOS only: rendered markdown for `scry -f` |
 
 Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
 
-`scry --doctor` shows which helpers are installed and what each one enables.
+`scry --doctor` shows which helpers are installed, what each one enables,
+and how to install the missing ones on your system.
 
 ## Usage
 
@@ -80,7 +86,9 @@ Options can go before or after the file names, and short ones combine
 ### `-f`, `--full`: the full variant
 
 `-f` means "give me the heavier, windowed view". It applies to every file on
-the command line, and files with no full variant are shown normally.
+the command line, and files with no full variant are shown normally. This
+table is for macOS; on Linux, every window is the file's default app instead
+(see [Linux](#linux)).
 
 | File type                        | `scry FILE`               | `scry -f FILE`                    |
 | -------------------------------- | ------------------------- | --------------------------------- |
@@ -88,7 +96,7 @@ the command line, and files with no full variant are shown normally.
 | Images                           | inline in the terminal    | Quick Look window                 |
 | 3D models (stl, obj, step, ...)  | rendered image, inline    | rendered image, Quick Look window |
 | PDF                              | Quick Look window         | Preview.app                       |
-| Audio                            | plays (mpv, else afplay)  | mpv window with album art        |
+| Audio                            | plays (mpv, else afplay)  | mpv window with album art         |
 | zip, jar, whl                    | file listing              | extract, open in Finder           |
 | tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
 
@@ -180,7 +188,47 @@ It needs `make deps-fzf`.
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
+| `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
+
+## Linux
+
+Everything works on Linux (and other Unix systems) too. In place of the
+macOS tools:
+
+| On macOS                          | On Linux                                                   |
+| --------------------------------- | ---------------------------------------------------------- |
+| Quick Look window, `open`, Finder | The file's default app, via `xdg-open`; folders open in your file manager |
+| `textutil` (rtf, doc, docx, odt)  | `pandoc`; `antiword` for `.doc`                            |
+| `afplay` (audio without mpv)      | `ffplay`, from ffmpeg                                      |
+| QuickTime Player (mp4, mov, m4v)  | `mpv`, or the default app without it                       |
+| `mdls`, `afinfo` (preview details) | `pdfinfo` (poppler) for page counts, `ffprobe` (ffmpeg) for audio and video |
+
+So under `-f`, markdown, images, 3D renders and PDFs open in whatever app your
+desktop uses for that type, and archives open in your file manager. Without a
+graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example over ssh,
+those views are an error that suggests `scry -p` instead. Everything that
+renders in the terminal works the same everywhere.
+
+Install the helpers with your package manager. On Debian and Ubuntu:
+
+```sh
+sudo apt install bat fzf visidata mpv f3d pandoc antiword poppler-utils ffmpeg xdg-utils
+```
+
+That command leaves out glow and viu because `apt` can't install them:
+Debian and Ubuntu have no packages for either. Like on macOS, they're a
+separate install. Use Homebrew (`brew install glow viu`), or
+`go install github.com/charmbracelet/glow@latest` and `cargo install viu`.
+
+Debian and Ubuntu also package bat under the name `batcat`; scry finds it
+under either name. Other distros mostly use the same package names
+(`poppler` instead of `poppler-utils` on Arch). `scry --doctor` gives install
+commands for your package manager.
+
+**WSL (Windows):** scry runs in WSL like on any Linux, and `-f` views open in
+Windows apps when `wslview` is installed (`sudo apt install wslu`). In
+Windows Terminal, viu draws images with block characters.
 
 ## Adding your own file types
 
@@ -199,16 +247,16 @@ a preview pane by accident.
 ```bash
 # ~/.config/scry/handlers/json.sh
 scry_register json "json jsonl" "jq, pretty-printed"
-scry_helper jq "json" "brew install jq"
+scry_helper jq "json" "$SCRY_INSTALL jq"
 
 scry_view_json() {
-    scry_require jq "brew install jq"
+    scry_require jq "$SCRY_INSTALL jq"
     jq -C . "$1" | less -R
 }
 
 # Optional: what fzf shows. No pager here, and cap the length.
 scry_preview_json() {
-    scry_require jq "brew install jq"
+    scry_require jq "$SCRY_INSTALL jq"
     jq -C . "$1" | head -n 200
 }
 ```
@@ -222,15 +270,16 @@ What's available to handlers:
 | `scry_register NAME "EXTS" "HELP"`      | Claim extensions (space-separated, no dot, `tar.gz` is fine)   |
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
 | `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
+| `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
 | `scry_tmp`, then `$SCRY_TMP`            | A private temp dir for this file, removed after its view       |
-| `scry_open FILE [APP]`                  | `open` FILE (with APP), keeping `$SCRY_TMP` for the window     |
+| `scry_open FILE [APP]`                  | Open FILE in its app (on macOS, in APP if given), keeping `$SCRY_TMP` for it |
+| `scry_window FILE`                      | A viewing window: Quick Look on macOS, the default app on Linux |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
 | `scry_show_image FILE`                  | Show an image the way scry does                                |
 | `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |
-| `scry_bat_view ARGS...`                 | Run `bat` at the right width; honors `--preview` and `-A`      |
+| `scry_bat_view ARGS...`                 | Run `bat` (or `batcat`) at the right width; honors `--preview` and `-A` |
 | `scry_term_width`                       | Print the width to render at (the fzf pane's, if previewing)   |
-| `scry_qlmanage_preview FILE`            | Open a Quick Look window and bring it to the front             |
 | `scry_lower STRING`                     | Lowercase a string (bash 3.2 has no `${var,,}`)                |
 | `scry_stem FILE`                        | FILE's name without directory or extension (`a.tar.gz` -> `a`) |
 
@@ -240,7 +289,15 @@ to the next file. The path a handler receives never starts with `-` (scry
 passes `./-name` instead), so viewers that don't take `--` are safe too.
 Handlers never delete their own temp files: anything under `$SCRY_TMP` is
 removed when the view ends, unless a window opened with `scry_open` or
-`scry_qlmanage_preview` may still be reading it.
+`scry_window` may still be reading it. (`scry_qlmanage_preview`, the old name
+of `scry_window`, still works.)
+
+Handlers stay portable by calling the platform layer instead of OS tools:
+`scry_doc_to_text`, `scry_pdf_pages`, `scry_audio_info`, `scry_video_info`,
+`scry_play_audio` and `scry_play_video`, along with `scry_open` and
+`scry_window`. They're defined for each OS in
+[`share/scry/platform/`](share/scry/platform); the header of `darwin.sh`
+documents them.
 
 Handler names must be unique (registering the same name twice is an error).
 Handlers are sourced into scry's shell, so like a `.zshrc`, only put code there
@@ -255,9 +312,9 @@ make uninstall
 This removes the `scry` command and its `share/scry` files (for a `make link`
 install, just the symlink). It deliberately does **not** touch:
 
-- **The Homebrew helpers.** `bat`, `glow`, `fzf` and the rest may be used by
-  other tools. `make uninstall-deps` lists the ones that are installed and asks
-  before running `brew uninstall` on them.
+- **The helpers.** `bat`, `glow`, `fzf` and the rest may be used by other
+  tools. With Homebrew, `make uninstall-deps` lists the ones that are
+  installed and asks before running `brew uninstall` on them.
 - **The Quick Look extension**, if you ran `make deps-quicklook`.
   `make uninstall-quicklook` unregisters it and removes the `qlmarkdown` cask.
 - **Your own handlers** in `~/.config/scry/handlers/`.
@@ -271,7 +328,8 @@ make test     # test suite; every helper is stubbed, so nothing needs installing
 SCRY_BASH=/bin/bash make test   # ...under macOS's stock bash 3.2
 ```
 
-CI runs both on every push: lint on Linux, tests on macOS (bash 3.2) and Linux.
+The tests run both platform layers on any OS. CI runs lint on Linux, and the
+tests and an install check on macOS (bash 3.2) and Linux.
 
 ## License
 

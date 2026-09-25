@@ -1,18 +1,18 @@
 # shellcheck shell=bash disable=SC2154
-scry_register pdf "pdf" "qlmanage window (-f: Preview.app)"
+scry_register pdf "pdf" "$SCRY_PDF_DESC"
 
 scry_view_pdf() {
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_open "$1" Preview
+        scry_open "$1" Preview   # the app is macOS's; elsewhere, the default app
     else
-        scry_qlmanage_preview "$1"
+        scry_window "$1"
     fi
 }
 
-# The Quick Look window is for viewing, not previewing; show a summary.
+# The window is for viewing, not previewing; show a summary.
 scry_preview_pdf() {
     local pages
     scry_info "$1"
-    pages="$(mdls -name kMDItemNumberOfPages -raw -- "$1" 2>/dev/null || true)"
-    case "$pages" in ""|"(null)") ;; *) echo "$pages pages" ;; esac
+    pages="$(scry_pdf_pages "$1")"
+    [ -z "$pages" ] || echo "$pages pages"
 }

@@ -83,7 +83,7 @@ EOF
 # Report which helpers the loaded handlers declared and whether each is present.
 doctor() {
     local i bin missing=0
-    echo "scry helpers:"
+    echo "scry helpers ($SCRY_PLATFORM):"
     for ((i = 0; i < ${#SCRY_HELPERS[@]}; i++)); do
         bin="${SCRY_HELPERS[$i]}"
         if command -v "$bin" >/dev/null 2>&1; then
@@ -94,12 +94,14 @@ doctor() {
             missing=1
         fi
     done
-    echo "Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, afinfo, mdls, open"
+    [ -z "$SCRY_DOCTOR_NOTE" ] || echo "$SCRY_DOCTOR_NOTE"
     [ "$missing" -eq 0 ] || echo "Only install the ones for file types you actually view."
 }
 
 view_one() {
     local file="$1" name handler
+    # shellcheck disable=SC2034  # read by the platform layer
+    SCRY_FILE="$1"
     if [ -d "$file" ]; then
         ls -la -- "$file"
         return
@@ -117,7 +119,7 @@ view_one() {
         case "$file" in -*) file="./$file" ;; esac
     fi
     if [ "$SCRY_RAW" = "1" ]; then
-        scry_require bat "brew install bat  (-A needs bat)"
+        scry_require "$SCRY_BAT" "$SCRY_INSTALL bat  (-A needs bat)"
         scry_bat_view -- "$file"
         return
     fi
@@ -174,7 +176,7 @@ view() {
 # selection (Tab to multi-select). Flags given with --fzf carry over.
 fzf_pick() {
     local dir="${1:-.}" preview selection file
-    scry_require fzf "brew install fzf"
+    scry_require fzf "$SCRY_INSTALL fzf"
     preview="$(printf '%q' "$SCRY_SELF") --preview"
     [ "$SCRY_RAW" = "1" ] && preview="$preview -A"
     [ -n "$SCRY_TYPE" ] && preview="$preview -t $(printf '%q' "$SCRY_TYPE")"

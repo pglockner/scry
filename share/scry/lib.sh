@@ -1,7 +1,9 @@
 # shellcheck shell=bash
 # scry shared library: the handler registry plus helpers that handlers call.
-# Sourced by bin/scry before any handler. Must stay compatible with bash 3.2
-# (macOS's /bin/bash): no associative arrays, no mapfile, no ${var,,}.
+# Sourced by bin/scry before any handler; it sources the platform layer
+# (platform/darwin.sh or platform/linux.sh) itself. Must stay compatible
+# with bash 3.2 (macOS's /bin/bash): no associative arrays, no mapfile, no
+# ${var,,}.
 
 SCRY_H_NAMES=()   # registered handler names
 SCRY_H_EXTS=()    # space-separated extensions per handler, lowercase, no dot
@@ -22,8 +24,16 @@ SCRY_TYPE=""
 
 # Per-file state. Each file is viewed in its own subshell, so these start
 # fresh for every file and scry_cleanup runs when that file's view ends.
+# shellcheck disable=SC2034  # read by platform/linux.sh
+SCRY_FILE=""       # the file being viewed, as given; for messages
 SCRY_TMP=""        # private temp dir for this file, made by scry_tmp
 SCRY_DETACHED=0    # 1 once a window outlives scry (Quick Look, open)
+
+# Debian and Ubuntu install bat as batcat.
+SCRY_BAT=bat
+if ! command -v bat >/dev/null 2>&1 && command -v batcat >/dev/null 2>&1; then
+    SCRY_BAT=batcat
+fi
 
 # scry_register NAME "EXT EXT ..." "HELP"
 #   Declare a handler. The handler must define scry_view_NAME(), which is
@@ -122,7 +132,7 @@ scry_bat_view() {
         args+=(--paging=auto)
     fi
     [ "$SCRY_RAW" = "1" ] && args+=(--show-all)
-    bat "${args[@]}" "$@"
+    "$SCRY_BAT" "${args[@]}" "$@"
 }
 
 # What scry does with a file no handler claims (and with piped stdin).
@@ -130,8 +140,8 @@ scry_bat_view() {
 # is highlighted even though no handler claims json.
 scry_fallback() {
     local args=()
-    [ "$SCRY_RAW" = "1" ] && scry_require bat "brew install bat  (-A needs bat)"
-    if command -v bat >/dev/null 2>&1; then
+    [ "$SCRY_RAW" = "1" ] && scry_require "$SCRY_BAT" "$SCRY_INSTALL bat  (-A needs bat)"
+    if command -v "$SCRY_BAT" >/dev/null 2>&1; then
         [ -n "$SCRY_TYPE" ] && args+=(--language="$SCRY_TYPE")
         scry_bat_view ${args[@]+"${args[@]}"} -- "$@"
     else
@@ -148,7 +158,7 @@ scry_tmp() {
 
 # scry_stem FILE -- print FILE's name without its directory or extension,
 # compound ones included (notes.tar.gz -> notes). For naming what scry makes
-# from FILE, so a Finder window says "notes", not "scry.McJ2WU".
+# from FILE, so a file-manager window says "notes", not "scry.McJ2WU".
 scry_stem() {
     local stem
     stem="$(basename -- "$1")"
@@ -166,50 +176,32 @@ scry_cleanup() {
     fi
 }
 
-# scry_open FILE [APP] -- hand FILE to macOS `open`, optionally with APP.
+# scry_open FILE [APP] -- open FILE in its app (on macOS, optionally in
+# APP; elsewhere APP is ignored and the default app opens it). The app
+# outlives scry, so once it's launched, the file's temp dir is kept. If it
+# can't be (no graphical session, say), the temp dir is cleaned up as usual.
 scry_open() {
-    scry_require open "open ships with macOS; this shouldn't happen"
+    scry_platform_open "$@"
     SCRY_DETACHED=1
-    if [ -n "${2:-}" ]; then
-        open -a "$2" -- "$1"
-    else
-        open -- "$1"
-    fi
 }
 
-# qlmanage's window doesn't activate itself, since it's launched from a
-# background process -- it can open behind the focused window. Poll for
-# the process and bring it forward; silently does nothing without
-# Accessibility permission granted to the terminal app.
+# The name scry_window had before there was more than one platform; kept
+# so user handlers that call it still work.
 scry_qlmanage_preview() {
-    local file="$1"
-    scry_require qlmanage "qlmanage ships with macOS; this shouldn't happen"
-    SCRY_DETACHED=1
-    qlmanage -p "$file" >/dev/null 2>&1 &
-    osascript -e '
-        tell application "System Events"
-            repeat 20 times
-                if exists (first process whose name is "qlmanage") then
-                    set frontmost of (first process whose name is "qlmanage") to true
-                    exit repeat
-                end if
-                delay 0.05
-            end repeat
-        end tell
-    ' >/dev/null 2>&1 &
+    scry_window "$@"
 }
 
-# Show an image file: Quick Look window under -f, else imgcat (iTerm2) or viu.
+# Show an image file: a window under -f, else imgcat (iTerm2) or viu.
 scry_show_image() {
     local file="$1"
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_qlmanage_preview "$file"
+        scry_window "$file"
         return
     fi
     if [ "${TERM_PROGRAM:-}" = "iTerm.app" ] && command -v imgcat >/dev/null 2>&1; then
         imgcat "$file"
     else
-        scry_require viu "brew install viu"
+        scry_require viu "${SCRY_HINT_VIU:-$SCRY_INSTALL viu}"
         viu "$file"
     fi
 }
@@ -228,7 +220,7 @@ scry_info() {
 scry_preview_image_file() {
     local w
     w="$(scry_term_width)"
-    scry_require viu "brew install viu"
+    scry_require viu "${SCRY_HINT_VIU:-$SCRY_INSTALL viu}"
     if [ -n "$w" ]; then
         viu -b -w "$w" "$1"
     else
@@ -236,7 +228,24 @@ scry_preview_image_file() {
     fi
 }
 
+# The platform layer: SCRY_PLATFORM=darwin|linux overrides the detection,
+# which the test suite uses to run both on any OS. Every non-macOS system
+# gets the Linux layer: it's built on freedesktop and portable tools.
+if [ -z "${SCRY_PLATFORM:-}" ]; then
+    case "$(uname -s)" in
+        Darwin) SCRY_PLATFORM=darwin ;;
+        *)      SCRY_PLATFORM=linux ;;
+    esac
+fi
+if [ ! -r "$SCRY_SHARE/platform/$SCRY_PLATFORM.sh" ]; then
+    echo "scry: no platform layer '$SCRY_PLATFORM' in $SCRY_SHARE/platform" >&2
+    exit 1
+fi
+# shellcheck source=platform/darwin.sh
+. "$SCRY_SHARE/platform/$SCRY_PLATFORM.sh"
+
 # bat is the fallback viewer for anything no handler claims, so it belongs
 # to the core rather than to any one handler.
-scry_helper bat "syntax highlighting, yaml, and the fallback viewer" "brew install bat"
-scry_helper fzf "scry --fzf (interactive file picker with previews)" "brew install fzf"
+scry_helper "$SCRY_BAT" "syntax highlighting, yaml, and the fallback viewer" "$SCRY_INSTALL bat"
+scry_helper fzf "scry --fzf (interactive file picker with previews)" "$SCRY_INSTALL fzf"
+scry_platform_helpers
