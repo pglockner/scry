@@ -243,6 +243,16 @@ run report.docx;        expect_called "pandoc --to=plain --wrap=none report.docx
 run old.doc;            expect_called "antiword old.doc" "doc -> antiword"
 run clip.mp4;           expect_called "mpv -- clip.mp4" "video -> mpv"
 run song.ogg;           expect_called "mpv --no-video -- song.ogg" "audio -> mpv"
+DISP="" run clip.mp4
+expect_called "mpv -- clip.mp4" "no graphical session: mpv still gets to try"
+case "$out" in *"no graphical session"*) bad "no message when mpv manages" "$out" ;; *) ok ;; esac
+stub mpv 'exit 2'   # mpv's "Errors when loading file", as when it has no window
+DISP="" run clip.mp4
+expect_rc 1 "no graphical session: mpv failing fails the view"
+expect_out "no graphical session to play 'clip.mp4' in" "and scry says why"
+expect_out "mpv --vo=tct 'clip.mp4'" "and offers terminal playback"
+DISP=:0 run clip.mp4
+case "$out" in *"no graphical session"*) bad "no headless message with a display" "$out" ;; *) ok ;; esac
 rm "$STUBS/mpv"
 run clip.mp4;           expect_called "xdg-open clip.mp4" "video without mpv -> default app"
 run song.ogg;           expect_called "ffplay -nodisp -autoexit -loglevel error song.ogg" "audio without mpv -> ffplay"

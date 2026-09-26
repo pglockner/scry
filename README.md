@@ -207,8 +207,11 @@ macOS tools:
 So under `-f`, markdown, images, 3D renders and PDFs open in whatever app your
 desktop uses for that type, and archives open in your file manager. Without a
 graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example over ssh,
-those views are an error that suggests `scry -p` instead. Everything that
-renders in the terminal works the same everywhere.
+those views are an error that suggests `scry -p` instead. Videos still go to
+mpv, which can sometimes play without a desktop (on a Linux console, say); when
+it can't, scry says why and suggests `mpv --vo=tct` to play the video as text
+in the terminal. Everything that renders in the terminal works the same
+everywhere.
 
 Install the helpers with your package manager. On Debian and Ubuntu:
 

@@ -52,10 +52,16 @@ if command -v wslview >/dev/null 2>&1; then
     SCRY_OPENER_PKG=wslu
 fi
 
+# X11 or Wayland, for windows of our own and xdg-open's apps. (WSLg sets
+# these too; wslview needs neither, since Windows shows its windows.)
+scry_has_display() {
+    [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
+}
+
 scry_platform_open() {
     # Name the file the user asked for, not a temp file made from it.
     local what="${SCRY_FILE:-$1}"
-    if [ "$SCRY_OPENER" = xdg-open ] && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    if [ "$SCRY_OPENER" = xdg-open ] && ! scry_has_display; then
         echo "scry: no graphical session to open '$what' in (try: scry -p '$what')" >&2
         exit 1
     fi
@@ -114,12 +120,21 @@ scry_play_audio() {
     fi
 }
 
+# Without X11 or Wayland, mpv may still manage (on a Linux console it can
+# draw with drm), so let it try; if it can't play the file (exit 2), add
+# what its own errors don't say. Without mpv, scry_open explains instead.
 scry_play_video() {
-    if command -v mpv >/dev/null 2>&1; then
-        mpv -- "$1"
-    else
+    local what="${SCRY_FILE:-$1}" rc=0
+    if ! command -v mpv >/dev/null 2>&1; then
         scry_open "$1"
+        return
     fi
+    mpv -- "$1" || rc=$?
+    if [ "$rc" -eq 2 ] && ! scry_has_display; then
+        echo "scry: no graphical session to play '$what' in (try: scry -p '$what'," \
+            "or mpv --vo=tct '$what' to play it as text in the terminal)" >&2
+    fi
+    return "$rc"
 }
 
 scry_platform_helpers() {
