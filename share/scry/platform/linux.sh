@@ -34,10 +34,11 @@ elif command -v apk >/dev/null 2>&1; then
 elif command -v brew >/dev/null 2>&1; then
     SCRY_INSTALL="brew install"
     SCRY_POPPLER=poppler
+    SCRY_HINT_ANTIWORD="antiword isn't in Homebrew; install it from your distro's packages"
 else
     SCRY_INSTALL="install"
 fi
-SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has them all: make deps"
+SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has most of them: make deps"
 SCRY_WINDOW_DESC="default app"
 SCRY_FOLDER_DESC="file manager"
 SCRY_PDF_DESC="default PDF app"
@@ -82,7 +83,7 @@ scry_window() {
 scry_doc_to_text() {
     case "$(scry_lower "$1")" in
         *.doc)
-            scry_require antiword "$SCRY_INSTALL antiword  (pandoc can't read .doc)"
+            scry_require antiword "${SCRY_HINT_ANTIWORD:-$SCRY_INSTALL antiword}  (pandoc can't read .doc)"
             antiword "$1"
             ;;
         *)
@@ -145,7 +146,7 @@ scry_platform_helpers() {
     scry_helper file "file types in preview summaries" "$SCRY_INSTALL file"
     scry_helper column "aligned columns in csv/tsv previews" "$SCRY_INSTALL $SCRY_COLUMN_PKG"
     scry_helper pandoc "rtf/docx/odt as text" "$SCRY_INSTALL pandoc"
-    scry_helper antiword ".doc as text" "$SCRY_INSTALL antiword"
+    scry_helper antiword ".doc as text" "${SCRY_HINT_ANTIWORD:-$SCRY_INSTALL antiword}"
     scry_helper pdfinfo "page counts in pdf previews" "$SCRY_INSTALL $SCRY_POPPLER"
     scry_helper ffprobe "audio/video details in previews; ffplay plays audio without mpv" \
         "$SCRY_INSTALL ffmpeg"

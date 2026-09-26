@@ -2,7 +2,7 @@ PREFIX ?= $(HOME)/.local
 BINDIR   = $(DESTDIR)$(PREFIX)/bin
 SHAREDIR = $(DESTDIR)$(PREFIX)/share/scry
 QLMD_APPEX = /Applications/QLMarkdown.app/Contents/PlugIns/Markdown QL Extension.appex
-DEP_FORMULAE = bat glow viu visidata f3d fzf mpv pandoc poppler antiword ffmpeg
+DEP_FORMULAE = bat glow viu visidata f3d fzf mpv pandoc poppler ffmpeg
 
 # The deps targets use Homebrew, which also runs on Linux. Without it, say
 # what to do instead of failing on "brew: command not found".
@@ -26,7 +26,7 @@ help:
 	@echo "make deps-3d              + f3d, for stl/3mf (large)"
 	@echo "make deps-audio           + mpv, audio progress, -f album art, ogg/opus"
 	@echo "make deps-fzf             + fzf, for scry --fzf (file picker with previews)"
-	@echo "make deps-linux           + pandoc, poppler, antiword, ffmpeg (Linux only)"
+	@echo "make deps-linux           + pandoc, poppler, ffmpeg (Linux only)"
 	@echo "make deps-quicklook       + qlmarkdown, for scry -f on markdown (macOS only)"
 	@echo "make uninstall-quicklook  undo deps-quicklook"
 	@echo "make uninstall-deps       optionally brew-uninstall the helpers (asks first)"

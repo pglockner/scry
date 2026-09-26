@@ -284,6 +284,11 @@ expect_rc 0 "csv preview without column(1)"
 expect_out "1,2" "shows the rows as they are"
 run --doctor;           expect_out "install: sudo apt install bsdextrautils" "doctor names column's package"
 ln -s "$(command -v column)" "$SYSBIN/column"
+rm "$STUBS/apt-get" "$STUBS/antiword" "$STUBS/pandoc"; stub brew   # Homebrew as the only package manager
+run --doctor
+expect_out "install: brew install pandoc" "Homebrew-only hints use brew"
+expect_out "antiword isn't in Homebrew" "but not for antiword, which it lacks"
+rm "$STUBS/brew"; stub apt-get; stub antiword; stub pandoc
 
 # --- detection ---
 case "$(uname -s)" in Darwin) host=darwin ;; *) host=linux ;; esac

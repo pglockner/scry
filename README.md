@@ -47,7 +47,7 @@ on Linux too):
 | `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf / obj / ply / gltf / step  |
 | `make deps-audio`     | mpv                          | audio progress, `-f` album art, ogg, mkv / webm / avi video |
 | `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
-| `make deps-linux`     | pandoc, antiword, poppler, ffmpeg | Linux only: documents, pdf page counts, media details, audio without mpv |
+| `make deps-linux`     | pandoc, poppler, ffmpeg      | Linux only: documents, pdf page counts, media details, audio without mpv. Not `.doc`: antiword isn't in Homebrew, so get it from your distro |
 | `make deps-quicklook` | qlmarkdown (cask)            | macOS only: rendered markdown for `scry -f` |
 
 Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
