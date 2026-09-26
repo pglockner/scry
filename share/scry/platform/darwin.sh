@@ -8,6 +8,7 @@
 #   SCRY_HINT_GLOW, _VIU     optional: hints for when SCRY_INSTALL can't get them
 #   scry_platform_open FILE [APP]  open FILE in its app (or in APP); detached
 #   scry_window FILE         a quick viewing window for FILE; detached
+#   scry_markdown_window FILE  FILE's markdown, rendered, in a window
 #   scry_doc_to_text FILE    print an rtf/doc/docx/odt file as plain text
 #   scry_pdf_pages FILE      print the page count, or nothing if unknown
 #   scry_audio_info FILE     print a few lines about an audio file (may be empty)
@@ -22,6 +23,7 @@
 SCRY_INSTALL="brew install"
 SCRY_DOCTOR_NOTE="Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, afinfo, mdls, open"
 SCRY_WINDOW_DESC="Quick Look window"
+SCRY_MARKDOWN_DESC="Quick Look window"
 SCRY_FOLDER_DESC="Finder"
 SCRY_PDF_DESC="Quick Look window (-f: Preview.app)"
 SCRY_VIDEO_DESC="QuickTime Player (mkv, webm, avi: mpv)"
@@ -61,6 +63,11 @@ scry_window() {
             end repeat
         end tell
     ' >/dev/null 2>&1 &
+}
+
+# Rendered by the QLMarkdown extension (make deps-quicklook).
+scry_markdown_window() {
+    scry_window "$1"
 }
 
 scry_doc_to_text() {

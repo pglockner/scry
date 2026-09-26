@@ -199,19 +199,28 @@ macOS tools:
 | On macOS                          | On Linux                                                   |
 | --------------------------------- | ---------------------------------------------------------- |
 | Quick Look window, `open`, Finder | The file's default app, via `xdg-open`; folders open in your file manager |
+| Quick Look markdown (`-f`)        | Rendered by `pandoc` into a web page and opened in your browser |
 | `textutil` (rtf, doc, docx, odt)  | `pandoc`; `antiword` for `.doc`                            |
 | `afplay` (audio without mpv)      | `ffplay`, from ffmpeg                                      |
 | QuickTime Player (mp4, mov, m4v)  | `mpv`, or the default app without it                       |
 | `mdls`, `afinfo` (preview details) | `pdfinfo` (poppler) for page counts, `ffprobe` (ffmpeg) for audio and video |
 
-So under `-f`, markdown, images, 3D renders and PDFs open in whatever app your
-desktop uses for that type, and archives open in your file manager. Without a
-graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example over ssh,
-those views are an error that suggests `scry -p` instead. Videos still go to
-mpv, which can sometimes play without a desktop (on a Linux console, say); when
-it can't, scry says why and suggests `mpv --vo=tct` to play the video as text
-in the terminal. Everything that renders in the terminal works the same
-everywhere.
+So under `-f`, images, 3D renders and PDFs open in whatever app your desktop
+uses for that type, and archives open in your file manager. Markdown is the
+exception: desktops tend to hand `.md` files to a text editor or LibreOffice,
+which show the source, so scry renders it (as GitHub-flavored markdown, with
+its images embedded) into a page in its temp folder and opens that in your
+browser. One catch on Ubuntu, where Firefox is a snap: snaps have their own
+`/tmp`, so snap Firefox can't open the page. Point scry's temp folder into
+your home, e.g. `export TMPDIR="$HOME/tmp"` (the folder must exist), or use a
+browser that isn't a snap.
+
+Without a graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example
+over ssh, those views are an error that suggests `scry -p` instead. Videos
+still go to mpv, which can sometimes play without a desktop (on a Linux
+console, say); when it can't, scry says why and suggests `mpv --vo=tct` to play
+the video as text in the terminal. Everything that renders in the terminal
+works the same everywhere.
 
 Install the helpers with your package manager. On Debian and Ubuntu:
 

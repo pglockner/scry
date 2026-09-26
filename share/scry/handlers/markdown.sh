@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC2154
-scry_register markdown "md markdown mkd mdown" "glow (-f: $SCRY_WINDOW_DESC)"
+scry_register markdown "md markdown mkd mdown" "glow (-f: $SCRY_MARKDOWN_DESC)"
 scry_helper glow "markdown" "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
 
 # glow ignores its file argument and reads stdin whenever stdin is a pipe
@@ -8,7 +8,7 @@ scry_helper glow "markdown" "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
 scry_view_markdown() {
     local file="$1" w args=(-p)
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_window "$file"
+        scry_markdown_window "$file"
         return
     fi
     scry_require glow "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"

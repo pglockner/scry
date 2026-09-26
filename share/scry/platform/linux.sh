@@ -40,6 +40,7 @@ else
 fi
 SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has most of them: make deps"
 SCRY_WINDOW_DESC="default app"
+SCRY_MARKDOWN_DESC="rendered by pandoc, in your browser"
 SCRY_FOLDER_DESC="file manager"
 SCRY_PDF_DESC="default PDF app"
 SCRY_VIDEO_DESC="mpv, else the default app"
@@ -78,6 +79,25 @@ scry_platform_open() {
 # No Quick Look here; the default app is the closest thing.
 scry_window() {
     scry_open "$1"
+}
+
+# Desktops tend to give .md files to a text editor or LibreOffice, which
+# show the source. Render it instead: pandoc turns GitHub-flavored markdown
+# into a standalone HTML page, with its images embedded (they're looked up
+# next to the markdown file), and the browser shows that.
+scry_markdown_window() {
+    local html embed=--self-contained
+    scry_require pandoc "$SCRY_INSTALL pandoc  (renders markdown for -f)"
+    # --self-contained became --embed-resources in pandoc 2.19; newer ones
+    # warn about the old name, older ones don't know the new one.
+    pandoc --help 2>/dev/null | grep -q -- --embed-resources && embed="--embed-resources --standalone"
+    scry_tmp
+    html="$SCRY_TMP/$(scry_stem "$1").html"
+    # $embed is unquoted on purpose: it's one or two options.
+    # shellcheck disable=SC2086
+    pandoc --quiet --from=gfm $embed --metadata pagetitle="$(scry_stem "$1")" \
+        --resource-path="$(dirname -- "$1")" --output="$html" "$1"
+    scry_open "$html"
 }
 
 scry_doc_to_text() {
@@ -145,7 +165,7 @@ scry_platform_helpers() {
         "$SCRY_INSTALL $SCRY_OPENER_PKG"
     scry_helper file "file types in preview summaries" "$SCRY_INSTALL file"
     scry_helper column "aligned columns in csv/tsv previews" "$SCRY_INSTALL $SCRY_COLUMN_PKG"
-    scry_helper pandoc "rtf/docx/odt as text" "$SCRY_INSTALL pandoc"
+    scry_helper pandoc "rtf/docx/odt as text; markdown in the browser (-f)" "$SCRY_INSTALL pandoc"
     scry_helper antiword ".doc as text" "${SCRY_HINT_ANTIWORD:-$SCRY_INSTALL antiword}"
     scry_helper pdfinfo "page counts in pdf previews" "$SCRY_INSTALL $SCRY_POPPLER"
     scry_helper ffprobe "audio/video details in previews; ffplay plays audio without mpv" \

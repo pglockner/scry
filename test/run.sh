@@ -216,7 +216,16 @@ expect_out "open in file manager" "help says file manager, not Finder"
 # --- windows open in the default app ---
 run doc.pdf;            expect_called "xdg-open doc.pdf" "pdf -> default app"
 run -f doc.pdf;         expect_called "xdg-open doc.pdf" "pdf -f -> default app (the macOS app name is dropped)"
-run notes.md -f;        expect_called "xdg-open notes.md" "md -f -> default app"
+run notes.md -f
+expect_called "pandoc --quiet --from=gfm --self-contained --metadata pagetitle=notes" "md -f -> rendered by pandoc"
+expect_called "xdg-open $T/scry." "and opened in the browser"
+expect_called "/notes.html" "as notes.html"
+rm -rf "${T:?}"/*
+rm "$STUBS/pandoc"
+run -f notes.md
+expect_rc 1 "md -f without pandoc fails"
+expect_out "'pandoc' not found. sudo apt install pandoc  (renders markdown for -f)" "and says why pandoc is needed"
+stub pandoc
 run -f part.stl
 expect_called "xdg-open $T/scry." "stl -f -> render opens in the default app"
 expect_tmp 1 "temp dir kept for the detached app"
