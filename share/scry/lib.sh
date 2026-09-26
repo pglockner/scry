@@ -185,6 +185,21 @@ scry_open() {
     SCRY_DETACHED=1
 }
 
+# scry_open_extracted DIR -- open DIR, an archive's extracted contents, in
+# the file manager. Many archives (GitHub's zips, most tarballs) wrap
+# everything in one top-level folder; then open that, not a folder holding
+# only it.
+scry_open_extracted() {
+    local dir="$1" entries
+    shopt -s nullglob dotglob
+    entries=("$dir"/*)
+    shopt -u nullglob dotglob
+    if [ "${#entries[@]}" -eq 1 ] && [ -d "${entries[0]}" ]; then
+        dir="${entries[0]}"
+    fi
+    scry_open "$dir"
+}
+
 # The name scry_window had before there was more than one platform; kept
 # so user handlers that call it still work.
 scry_qlmanage_preview() {

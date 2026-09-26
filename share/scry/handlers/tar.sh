@@ -13,7 +13,7 @@ scry_view_tar() {
         dest="$SCRY_TMP/$(scry_stem "$1")"
         mkdir "$dest"
         tar -xf "$1" -C "$dest"
-        scry_open "$dest"
+        scry_open_extracted "$dest"
     else
         tar -tvf "$1"
     fi

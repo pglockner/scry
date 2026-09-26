@@ -9,7 +9,9 @@ scry_view_zip() {
         dest="$SCRY_TMP/$(scry_stem "$1")"
         mkdir "$dest"
         unzip -q -- "$1" -d "$dest"
-        scry_open "$dest"
+        # Resource-fork clutter from zips made with macOS's Compress.
+        rm -rf "$dest/__MACOSX"
+        scry_open_extracted "$dest"
     else
         unzip -l -- "$1"
     fi

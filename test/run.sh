@@ -166,6 +166,13 @@ case "$dest" in "$T"/scry.*/a) ok ;; *) bad "tar -f extracts into a folder named
 expect_called "open -- $dest" "tar -f opens that folder in Finder"
 if [ -f "$dest/plain.txt" ]; then ok; else bad "tar -f extracts the files" "$(find "$T")"; fi
 rm -rf "${T:?}"/*
+# An archive holding one folder (like GitHub's zips) opens that folder.
+(cd "$F" && mkdir proj && cp plain.txt proj/ && tar -cf proj.tar.gz proj && rm -r proj)
+run -f proj.tar.gz
+dest="$(find "$T" -mindepth 3 -maxdepth 3 -type d -name proj)"
+expect_called "open -- $dest" "a lone top-level folder opens directly"
+case "$dest" in "$T"/scry.*/proj/proj) ok ;; *) bad "that folder is inside the archive's" "$(find "$T")" ;; esac
+rm -rf "${T:?}"/*
 
 # --- previews never open anything ---
 run -p doc.pdf song.ogg clip.mp4 notes.md

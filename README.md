@@ -285,6 +285,7 @@ What's available to handlers:
 | `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
 | `scry_tmp`, then `$SCRY_TMP`            | A private temp dir for this file, removed after its view       |
+| `scry_open_extracted DIR`               | Open extracted files; a lone top-level folder opens directly   |
 | `scry_open FILE [APP]`                  | Open FILE in its app (on macOS, in APP if given), keeping `$SCRY_TMP` for it |
 | `scry_window FILE`                      | A viewing window: Quick Look on macOS, the default app on Linux |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
