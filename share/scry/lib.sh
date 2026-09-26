@@ -207,12 +207,18 @@ scry_show_image() {
 }
 
 # scry_info FILE -- short summary: name, kind and size. The safe preview
-# for anything that can't be rendered as text.
+# for anything that can't be rendered as text. The kind comes from file(1),
+# which minimal Linux images leave out; then it's just the size.
 scry_info() {
     local f="$1" size
     # shellcheck disable=SC2012  # one known path; only ls gives a human size
     size="$(ls -lhd -- "$f" | awk '{print $5}')"
-    printf '%s\n%s, %s\n' "$(basename -- "$f")" "$(file -b -- "$f")" "$size"
+    basename -- "$f"
+    if command -v file >/dev/null 2>&1; then
+        printf '%s, %s\n' "$(file -b -- "$f")" "$size"
+    else
+        printf '%s\n' "$size"
+    fi
 }
 
 # Image for a preview pane: forced block output at the pane width, since

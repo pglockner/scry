@@ -12,12 +12,14 @@
 # Must stay compatible with bash 3.2 (the tests run it on macOS, too).
 
 # The distro's package manager, for install hints. Package names are the
-# common ones; poppler's tools are split out under another name on some.
+# common ones; poppler's tools and column(1) live in other packages on some.
 # Debian and Ubuntu don't package glow or viu, so their hints name other
 # ways to get them.
 SCRY_POPPLER=poppler-utils
+SCRY_COLUMN_PKG=util-linux
 if command -v apt-get >/dev/null 2>&1; then
     SCRY_INSTALL="sudo apt install"
+    SCRY_COLUMN_PKG=bsdextrautils
     SCRY_HINT_GLOW="brew install glow, or: go install github.com/charmbracelet/glow@latest"
     SCRY_HINT_VIU="brew install viu, or: cargo install viu"
 elif command -v dnf >/dev/null 2>&1; then
@@ -140,6 +142,8 @@ scry_play_video() {
 scry_platform_helpers() {
     scry_helper "$SCRY_OPENER" "opening files in their app (-f, pdf, video without mpv)" \
         "$SCRY_INSTALL $SCRY_OPENER_PKG"
+    scry_helper file "file types in preview summaries" "$SCRY_INSTALL file"
+    scry_helper column "aligned columns in csv/tsv previews" "$SCRY_INSTALL $SCRY_COLUMN_PKG"
     scry_helper pandoc "rtf/docx/odt as text" "$SCRY_INSTALL pandoc"
     scry_helper antiword ".doc as text" "$SCRY_INSTALL antiword"
     scry_helper pdfinfo "page counts in pdf previews" "$SCRY_INSTALL $SCRY_POPPLER"

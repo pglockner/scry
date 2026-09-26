@@ -269,6 +269,21 @@ expect_called "ffprobe" "video preview asks ffprobe"
 expect_out "codec_name=h264" "and shows what it says"
 expect_called "pandoc" "document preview"
 expect_silent xdg-open "previews open nothing"
+rm "$SYSBIN/file"   # minimal Linux images don't have file(1)
+run -p clip.mp4
+expect_rc 0 "preview without file(1)"
+case "$out" in *"not found"*) bad "no error without file(1)" "$out" ;; *) ok ;; esac
+expect_out "clip.mp4" "the summary still names the file"
+run --doctor;           expect_out "MISSING  file" "doctor lists file(1) on Linux"
+ln -s "$(command -v file)" "$SYSBIN/file"
+printf 'a\tb\n1\t2\n' > "$F/t.tsv"
+run -p t.tsv;           expect_out "a  b" "tsv preview aligns on tabs"
+rm "$SYSBIN/column"
+run -p t.csv
+expect_rc 0 "csv preview without column(1)"
+expect_out "1,2" "shows the rows as they are"
+run --doctor;           expect_out "install: sudo apt install bsdextrautils" "doctor names column's package"
+ln -s "$(command -v column)" "$SYSBIN/column"
 
 # --- detection ---
 case "$(uname -s)" in Darwin) host=darwin ;; *) host=linux ;; esac
