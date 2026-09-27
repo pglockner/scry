@@ -2,12 +2,12 @@
 # 3D models are geometry, not pixels -- render with f3d's headless screenshot
 # mode, then hand the PNG to the image viewer.
 scry_register model3d "stl 3mf obj ply gltf glb step stp" "f3d render, shown as an image"
-scry_helper f3d "stl/3mf/obj/ply/gltf/step" "brew install f3d"
+scry_helper f3d "stl/3mf/obj/ply/gltf/step" "$SCRY_INSTALL f3d"
 
 # scry_render_model3d FILE -- render FILE to $SCRY_TMP/model.png. f3d exits
 # 0 even on a parse failure, so success means the PNG landed.
 scry_render_model3d() {
-    scry_require f3d "brew install f3d"
+    scry_require f3d "$SCRY_INSTALL f3d"
     scry_tmp
     f3d --output="$SCRY_TMP/model.png" --resolution=1000,750 -- "$1" >/dev/null 2>&1 || true
     [ -s "$SCRY_TMP/model.png" ]

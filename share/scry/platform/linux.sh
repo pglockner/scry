@@ -1,0 +1,173 @@
+# shellcheck shell=bash disable=SC2034  # read by lib.sh, the handlers and bin/scry
+# scry platform layer: Linux, and any other non-macOS Unix, including WSL.
+# Sourced by lib.sh; defines what darwin.sh documents, with freedesktop and
+# cross-platform tools in place of the macOS ones:
+#
+#   macOS               here
+#   open, qlmanage      xdg-open (wslview under WSL)
+#   textutil            pandoc; antiword for .doc
+#   mdls, afinfo        pdfinfo (poppler), ffprobe (ffmpeg)
+#   afplay              ffplay (ffmpeg), when mpv isn't installed
+#
+# Must stay compatible with bash 3.2 (the tests run it on macOS, too).
+
+# The distro's package manager, for install hints. Package names are the
+# common ones; poppler's tools and column(1) live in other packages on some.
+# Debian and Ubuntu don't package glow or viu, so their hints name other
+# ways to get them.
+SCRY_POPPLER=poppler-utils
+SCRY_COLUMN_PKG=util-linux
+if command -v apt-get >/dev/null 2>&1; then
+    SCRY_INSTALL="sudo apt install"
+    SCRY_COLUMN_PKG=bsdextrautils
+    SCRY_HINT_GLOW="brew install glow, or: go install github.com/charmbracelet/glow@latest"
+    SCRY_HINT_VIU="brew install viu, or: cargo install viu"
+elif command -v dnf >/dev/null 2>&1; then
+    SCRY_INSTALL="sudo dnf install"
+elif command -v pacman >/dev/null 2>&1; then
+    SCRY_INSTALL="sudo pacman -S"
+    SCRY_POPPLER=poppler
+elif command -v zypper >/dev/null 2>&1; then
+    SCRY_INSTALL="sudo zypper install"
+elif command -v apk >/dev/null 2>&1; then
+    SCRY_INSTALL="sudo apk add"
+elif command -v brew >/dev/null 2>&1; then
+    SCRY_INSTALL="brew install"
+    SCRY_POPPLER=poppler
+    SCRY_HINT_ANTIWORD="antiword isn't in Homebrew; install it from your distro's packages"
+else
+    SCRY_INSTALL="install"
+fi
+SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has most of them: make deps"
+SCRY_WINDOW_DESC="default app"
+SCRY_MARKDOWN_DESC="rendered by pandoc, in your browser"
+SCRY_FOLDER_DESC="file manager"
+SCRY_PDF_DESC="default PDF app"
+SCRY_VIDEO_DESC="mpv, else the default app"
+SCRY_AUDIO_FALLBACK_DESC="ffplay"
+SCRY_DOC_DESC="pandoc (antiword for .doc), as plain text"
+
+# WSL opens files in their Windows apps with wslview (from wslu); elsewhere,
+# xdg-open.
+SCRY_OPENER=xdg-open
+SCRY_OPENER_PKG=xdg-utils
+if command -v wslview >/dev/null 2>&1; then
+    SCRY_OPENER=wslview
+    SCRY_OPENER_PKG=wslu
+fi
+
+# X11 or Wayland, for windows of our own and xdg-open's apps. (WSLg sets
+# these too; wslview needs neither, since Windows shows its windows.)
+scry_has_display() {
+    [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
+}
+
+scry_platform_open() {
+    # Name the file the user asked for, not a temp file made from it.
+    local what="${SCRY_FILE:-$1}"
+    if [ "$SCRY_OPENER" = xdg-open ] && ! scry_has_display; then
+        echo "scry: no graphical session to open '$what' in (try: scry -p '$what')" >&2
+        exit 1
+    fi
+    scry_require "$SCRY_OPENER" "$SCRY_INSTALL $SCRY_OPENER_PKG"
+    # Backgrounded: without a desktop environment, xdg-open can run the app
+    # in the foreground and wait for it. The APP argument names a macOS app,
+    # so it's ignored; the file opens in the user's default app for its type.
+    "$SCRY_OPENER" "$1" >/dev/null 2>&1 &
+}
+
+# No Quick Look here; the default app is the closest thing.
+scry_window() {
+    scry_open "$1"
+}
+
+# Desktops tend to give .md files to a text editor or LibreOffice, which
+# show the source. Render it instead: pandoc turns GitHub-flavored markdown
+# into a standalone HTML page, with its images embedded (they're looked up
+# next to the markdown file), and the browser shows that.
+scry_markdown_window() {
+    local html embed=--self-contained
+    scry_require pandoc "$SCRY_INSTALL pandoc  (renders markdown for -f)"
+    # --self-contained became --embed-resources in pandoc 2.19; newer ones
+    # warn about the old name, older ones don't know the new one.
+    pandoc --help 2>/dev/null | grep -q -- --embed-resources && embed="--embed-resources --standalone"
+    scry_tmp
+    html="$SCRY_TMP/$(scry_stem "$1").html"
+    # $embed is unquoted on purpose: it's one or two options.
+    # shellcheck disable=SC2086
+    pandoc --quiet --from=gfm $embed --metadata pagetitle="$(scry_stem "$1")" \
+        --resource-path="$(dirname -- "$1")" --output="$html" "$1"
+    scry_open "$html"
+}
+
+scry_doc_to_text() {
+    case "$(scry_lower "$1")" in
+        *.doc)
+            scry_require antiword "${SCRY_HINT_ANTIWORD:-$SCRY_INSTALL antiword}  (pandoc can't read .doc)"
+            antiword "$1"
+            ;;
+        *)
+            scry_require pandoc "$SCRY_INSTALL pandoc"
+            pandoc --to=plain --wrap=none "$1"
+            ;;
+    esac
+}
+
+scry_pdf_pages() {
+    command -v pdfinfo >/dev/null 2>&1 || return 0
+    pdfinfo "$1" 2>/dev/null | awk '/^Pages:/ { print $2 }'
+}
+
+# ffprobe knows audio and video alike; without it, previews show just the
+# summary line.
+scry_media_info() {
+    command -v ffprobe >/dev/null 2>&1 || return 0
+    ffprobe -v error -of default=noprint_wrappers=1 \
+        -show_entries format=duration:stream=codec_name,width,height,sample_rate,channels \
+        "$1" 2>/dev/null || true
+}
+
+scry_audio_info() {
+    scry_media_info "$1"
+}
+
+scry_video_info() {
+    scry_media_info "$1"
+}
+
+scry_play_audio() {
+    if command -v ffplay >/dev/null 2>&1; then
+        ffplay -nodisp -autoexit -loglevel error "$1"
+    else
+        scry_require mpv "$SCRY_INSTALL mpv"
+    fi
+}
+
+# Without X11 or Wayland, mpv may still manage (on a Linux console it can
+# draw with drm), so let it try; if it can't play the file (exit 2), add
+# what its own errors don't say. Without mpv, scry_open explains instead.
+scry_play_video() {
+    local what="${SCRY_FILE:-$1}" rc=0
+    if ! command -v mpv >/dev/null 2>&1; then
+        scry_open "$1"
+        return
+    fi
+    mpv -- "$1" || rc=$?
+    if [ "$rc" -eq 2 ] && ! scry_has_display; then
+        echo "scry: no graphical session to play '$what' in (try: scry -p '$what'," \
+            "or mpv --vo=tct '$what' to play it as text in the terminal)" >&2
+    fi
+    return "$rc"
+}
+
+scry_platform_helpers() {
+    scry_helper "$SCRY_OPENER" "opening files in their app (-f, pdf, video without mpv)" \
+        "$SCRY_INSTALL $SCRY_OPENER_PKG"
+    scry_helper file "file types in preview summaries" "$SCRY_INSTALL file"
+    scry_helper column "aligned columns in csv/tsv previews" "$SCRY_INSTALL $SCRY_COLUMN_PKG"
+    scry_helper pandoc "rtf/docx/odt as text; markdown in the browser (-f)" "$SCRY_INSTALL pandoc"
+    scry_helper antiword ".doc as text" "${SCRY_HINT_ANTIWORD:-$SCRY_INSTALL antiword}"
+    scry_helper pdfinfo "page counts in pdf previews" "$SCRY_INSTALL $SCRY_POPPLER"
+    scry_helper ffprobe "audio/video details in previews; ffplay plays audio without mpv" \
+        "$SCRY_INSTALL ffmpeg"
+}

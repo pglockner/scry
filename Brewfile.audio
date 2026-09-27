@@ -1,5 +1,8 @@
 # Optional: audio playback with a progress line, `scry -f` window
 # with album art, and ogg/opus. Without it, scry falls back to afplay.
 # Also plays the video formats QuickTime can't: mkv, webm, avi.
+# Large: Homebrew's mpv pulls in LLVM, about 500 MB installed, and brew
+# downloads it before unpacking it, so the install needs over 1 GB of free
+# disk space. Skip it unless you play audio or video from the terminal.
 # Install with: make deps-audio   (or: brew bundle --file=Brewfile.audio)
 brew "mpv"

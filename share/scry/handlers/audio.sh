@@ -1,31 +1,24 @@
 # shellcheck shell=bash
-scry_register audio "mp3 m4a wav aiff aif aac flac caf ogg oga opus" "mpv if installed, else afplay (-f: mpv window with album art)"
-scry_helper mpv "audio playback with progress, album-art window (-f), ogg/opus" "brew install mpv"
+scry_register audio "mp3 m4a wav aiff aif aac flac caf ogg oga opus" \
+    "mpv if installed, else $SCRY_AUDIO_FALLBACK_DESC (-f: mpv window with album art)"
+scry_helper mpv "audio playback with progress, album-art window (-f), ogg/opus, more video" \
+    "$SCRY_INSTALL mpv"
 
 scry_view_audio() {
     local file="$1"
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_require mpv "brew install mpv (or: make deps-audio)"
+        scry_require mpv "$SCRY_INSTALL mpv (or: make deps-audio)"
         # mpv's defaults: a window showing embedded album art, if any.
         mpv -- "$file"
         return
     fi
     # Prefer mpv when installed: it shows a progress line and takes
-    # seek/pause keys. Otherwise fall back to afplay, which is silent.
+    # seek/pause keys. Otherwise the platform's player, which is silent.
     if command -v mpv >/dev/null 2>&1; then
         mpv --no-video -- "$file"
-        return
+    else
+        scry_play_audio "$file"
     fi
-    # afplay can't decode Ogg containers.
-    case "$(scry_lower "$file")" in
-        *.ogg|*.oga|*.opus)
-            echo "scry: afplay can't play Ogg; brew install mpv (or: make deps-audio)" >&2
-            exit 1
-            ;;
-    esac
-    scry_require afplay "afplay ships with macOS; this shouldn't happen"
-    # afplay doesn't take `--`; scry already made a dash-leading name ./-name.
-    afplay "$file"
 }
 
 # Never play sound from a preview; show the file's own metadata instead.
@@ -38,5 +31,5 @@ scry_preview_audio() {
             | grep -v -e '^Exiting' -e '^client removed' || true
         return
     fi
-    afinfo "$1" 2>/dev/null | grep -E 'estimated duration|Data format|sample rate' || true
+    scry_audio_info "$1"
 }

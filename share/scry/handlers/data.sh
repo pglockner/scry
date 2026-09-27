@@ -1,9 +1,9 @@
 # shellcheck shell=bash
 scry_register data "csv tsv psv" "visidata (vd)"
-scry_helper vd "csv/tsv/psv" "brew install visidata"
+scry_helper vd "csv/tsv/psv" "$SCRY_INSTALL visidata"
 
 scry_view_data() {
-    scry_require vd "brew install visidata"
+    scry_require vd "$SCRY_INSTALL visidata"
     vd "$1"
 }
 
@@ -17,8 +17,18 @@ scry_preview_data() {
     esac
     w="$(scry_term_width)"
     if [ -n "$w" ]; then
-        head -n 30 < "$file" | column -t -s "$sep" | cut -c "1-$w"
+        head -n 30 < "$file" | scry_align_columns "$sep" | cut -c "1-$w"
     else
-        head -n 30 < "$file" | column -t -s "$sep"
+        head -n 30 < "$file" | scry_align_columns "$sep"
+    fi
+}
+
+# scry_align_columns SEP -- align stdin into columns split on SEP. Minimal
+# Linux images leave out column(1); then the rows pass through as they are.
+scry_align_columns() {
+    if command -v column >/dev/null 2>&1; then
+        column -t -s "$1"
+    else
+        cat
     fi
 }
