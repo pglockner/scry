@@ -24,7 +24,7 @@ help:
 	@echo "make deps                 install core helpers (bat, glow, viu)"
 	@echo "make deps-data            + visidata, for csv/tsv"
 	@echo "make deps-3d              + f3d, for stl/3mf (large)"
-	@echo "make deps-audio           + mpv, audio progress, -f album art, ogg/opus"
+	@echo "make deps-audio           + mpv, audio progress, -f album art, ogg/opus (large, over 1 GB)"
 	@echo "make deps-fzf             + fzf, for scry --fzf (file picker with previews)"
 	@echo "make deps-linux           + pandoc, poppler, ffmpeg (Linux only)"
 	@echo "make deps-quicklook       + qlmarkdown, for scry -f on markdown (macOS only)"

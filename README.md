@@ -45,7 +45,7 @@ on Linux too):
 | `make deps`           | bat, glow, viu               | text/code, yaml, markdown, images    |
 | `make deps-data`      | visidata                     | csv / tsv / psv                      |
 | `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf / obj / ply / gltf / step  |
-| `make deps-audio`     | mpv                          | audio progress, `-f` album art, ogg, mkv / webm / avi video |
+| `make deps-audio`     | mpv (over 1 GB: pulls in LLVM) | audio progress, `-f` album art, ogg, mkv / webm / avi video |
 | `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
 | `make deps-linux`     | pandoc, poppler, ffmpeg      | Linux only: documents, pdf page counts, media details, audio without mpv. Not `.doc`: antiword isn't in Homebrew, so get it from your distro |
 | `make deps-quicklook` | qlmarkdown (cask)            | macOS only: rendered markdown for `scry -f` |
