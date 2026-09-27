@@ -36,12 +36,26 @@ scry_platform_helpers() {
 }
 
 scry_platform_open() {
+    local entries
     scry_require open "open ships with macOS; this shouldn't happen"
     if [ -n "${2:-}" ]; then
         open -a "$2" -- "$1"
-    else
-        open -- "$1"
+        return
     fi
+    # Finder's column view shows a folder opened this way selected in its
+    # parent's column, with its contents out of view. Revealing the first
+    # item inside shows the contents in every view. (Hidden files don't
+    # count; an empty folder just opens.)
+    if [ -d "$1" ]; then
+        shopt -s nullglob
+        entries=("$1"/*)
+        shopt -u nullglob
+        if [ "${#entries[@]}" -gt 0 ]; then
+            open -R -- "${entries[0]}"
+            return
+        fi
+    fi
+    open -- "$1"
 }
 
 # A Quick Look window. qlmanage's window doesn't activate itself, since it's
