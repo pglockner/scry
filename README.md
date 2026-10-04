@@ -133,8 +133,10 @@ window (`qlmanage -p`). Two macOS quirks:
   time it's used.
 
 Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
-since a window would open on the remote machine's screen. Set
-`SCRY_ALLOW_REMOTE=1` if you forward a display.
+since a window would open on the remote machine's screen. scry only guesses
+from ssh's environment variables, so a shell that has none (a herdr or tmux
+server you attach to from another machine) needs `export SCRY_REMOTE=1`; use
+`SCRY_REMOTE=0` to allow windows over ssh, e.g. with a forwarded display.
 
 ### `-t`, `--type`: pick the viewer yourself
 
@@ -210,7 +212,7 @@ It needs `make deps-fzf`.
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
-| `SCRY_ALLOW_REMOTE=1`   | Let `-f` open windows even over ssh (it's ignored there by default) |
+| `SCRY_REMOTE`           | `1`: treat this shell as remote (`-f` is ignored); `0`: as local. Unset: guess from ssh |
 | `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 

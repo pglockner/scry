@@ -154,12 +154,16 @@ scry_fallback() {
     fi
 }
 
-# scry_is_remote -- succeed if this terminal is probably an ssh session, so
-# windows and apps would open on the far machine. SCRY_ALLOW_REMOTE=1 says
-# otherwise (X forwarding, say).
+# scry_is_remote -- succeed if windows and apps would open on a different
+# machine than the one you're looking at. SCRY_REMOTE=1 or 0 says so outright,
+# for shells with no ssh variables (a herdr or tmux server you attach to from
+# elsewhere); otherwise it's a guess from ssh's variables.
 scry_is_remote() {
-    [ "${SCRY_ALLOW_REMOTE:-}" != 1 ] \
-        && { [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${SSH_CLIENT:-}" ]; }
+    case "${SCRY_REMOTE:-}" in
+        1) return 0 ;;
+        0) return 1 ;;
+    esac
+    [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${SSH_CLIENT:-}" ]
 }
 
 # scry_edit_text FILE -- edit FILE in $VISUAL, else $EDITOR, else vi.
