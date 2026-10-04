@@ -10,3 +10,7 @@ scry_view_yaml() {
 scry_preview_yaml() {
     scry_view_yaml "$1"
 }
+
+scry_edit_yaml() {
+    scry_edit_text "$1"
+}

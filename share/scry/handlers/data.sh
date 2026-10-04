@@ -32,3 +32,8 @@ scry_align_columns() {
         cat
     fi
 }
+
+# visidata edits in place (save with Ctrl-S), so viewing is editing.
+scry_edit_data() {
+    scry_view_data "$1"
+}

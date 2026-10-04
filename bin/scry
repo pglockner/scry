@@ -47,10 +47,13 @@ Usage:
   scry DIR                 list directory contents (ls -la)
   cmd | scry               read piped stdin like cat (also: FILE is -)
 
-Options (may come before or after files; short ones combine, e.g. -fA):
+Options (may come before or after files; short ones combine, e.g. -fA;
+letter case never matters: -F is -f, -a is -A):
   -f, --full        force the "full" variant -- see (-f: ...) notes below
   -A, --show-all    skip the handlers; show the file with bat --show-all
                     (tabs, spaces, line endings and other non-printables)
+  -e, --edit        open the file for editing where that's easy (visidata,
+                    $VISUAL/$EDITOR, the default app); otherwise just view
   -p, --preview     non-interactive output for previewers: no windows,
                     pagers or players; fits $FZF_PREVIEW_COLUMNS
   -t, --type EXT    treat every file (and stdin) as if it ended in .EXT,
@@ -125,6 +128,20 @@ view_one() {
     fi
     name="$file"
     [ -n "$SCRY_TYPE" ] && name="stdin.$SCRY_TYPE"
+    # -e: edit where the handler can (scry_edit_NAME); an unclaimed file
+    # goes to the text editor. Otherwise fall through to a plain view.
+    # Stdin is only a spooled copy, so there's nothing to edit.
+    if [ "$SCRY_EDIT" = "1" ] && [ "$SCRY_PREVIEW" != "1" ] && [ "$file" != - ]; then
+        if handler="$(scry_find_handler "$name")"; then
+            if declare -F "scry_edit_$handler" >/dev/null; then
+                "scry_edit_$handler" "$file"
+                return
+            fi
+        else
+            scry_edit_text "$file"
+            return
+        fi
+    fi
     if ! handler="$(scry_find_handler "$name")"; then
         scry_fallback "$file"
         return
@@ -195,24 +212,26 @@ usage_error() {
     exit 2
 }
 
-# Options may come anywhere (until --); everything else is a file.
+# Options may come anywhere (until --); everything else is a file. Short
+# options are case-insensitive, so no letter may ever mean two things.
 MODE=view
 files=()
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        -h|--help)      show_help; exit 0 ;;
+        -h|-H|--help)   show_help; exit 0 ;;
         --doctor)       doctor; exit 0 ;;
-        -f|--full)      FORCE_WINDOW=1 ;;
-        -A|--show-all)  SCRY_RAW=1 ;;
-        -p|--preview)   SCRY_PREVIEW=1 ;;
+        -f|-F|--full)   FORCE_WINDOW=1 ;;
+        -A|-a|--show-all) SCRY_RAW=1 ;;
+        -e|-E|--edit)   SCRY_EDIT=1 ;;
+        -p|-P|--preview) SCRY_PREVIEW=1 ;;
         --fzf)          MODE=fzf ;;
-        -t|--type)
+        -t|-T|--type)
             [ "$#" -ge 2 ] || usage_error "option '$1' needs an extension"
             SCRY_TYPE="$2"
             shift
             ;;
         --type=*)       SCRY_TYPE="${1#--type=}" ;;
-        -t?*)           SCRY_TYPE="${1#-t}" ;;
+        -[tT]?*)        SCRY_TYPE="${1#-?}" ;;
         --)             shift; files+=("$@"); break ;;
         -[!-]?*)
             # Split combined short options: -fA -> -f -A.
