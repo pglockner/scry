@@ -227,29 +227,29 @@ MODE=view
 files=()
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        -h|-H|--help)   show_help; exit 0 ;;
-        --doctor)       doctor; exit 0 ;;
-        -f|-F|--full)   FORCE_WINDOW=1 ;;
+        -h|-H|--help)     show_help; exit 0 ;;
+        --doctor)         doctor; exit 0 ;;
+        -f|-F|--full)     FORCE_WINDOW=1 ;;
         -A|-a|--show-all) SCRY_RAW=1 ;;
-        -e|-E|--edit)   SCRY_EDIT=1 ;;
-        -p|-P|--preview) SCRY_PREVIEW=1 ;;
-        --fzf)          MODE=fzf ;;
+        -e|-E|--edit)     SCRY_EDIT=1 ;;
+        -p|-P|--preview)  SCRY_PREVIEW=1 ;;
+        --fzf)            MODE=fzf ;;
         -t|-T|--type)
             [ "$#" -ge 2 ] || usage_error "option '$1' needs an extension"
             SCRY_TYPE="$2"
             shift
             ;;
-        --type=*)       SCRY_TYPE="${1#--type=}" ;;
-        -[tT]?*)        SCRY_TYPE="${1#-?}" ;;
-        --)             shift; files+=("$@"); break ;;
+        --type=*)         SCRY_TYPE="${1#--type=}" ;;
+        -[tT]?*)          SCRY_TYPE="${1#-?}" ;;
+        --)               shift; files+=("$@"); break ;;
         -[!-]?*)
             # Split combined short options: -fA -> -f -A.
             rest="${1#-?}"
             set -- "${1%"$rest"}" "-$rest" "${@:2}"
             continue
             ;;
-        -?*)            usage_error "unknown option '$1'" ;;
-        *)              files+=("$1") ;;
+        -?*)              usage_error "unknown option '$1'" ;;
+        *)                files+=("$1") ;;
     esac
     shift
 done
