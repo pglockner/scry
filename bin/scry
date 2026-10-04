@@ -79,6 +79,9 @@ EOF
 A recognized extension with a missing viewer is a hard error (not a
 silent fallback), so a missing helper is obvious immediately.
 Set SCRY_DEBUG=1 to print detected terminal width to stderr.
+Over ssh, -f is ignored and files are shown in the terminal, since windows
+would open on the other machine. scry guesses from ssh's environment; set
+SCRY_REMOTE=1 (or 0) when it guesses wrong, e.g. in a herdr or tmux server.
 EOF
     echo "Handlers load from $SCRY_SHARE/handlers and $SCRY_USER_HANDLERS."
 }
@@ -101,8 +104,21 @@ doctor() {
     [ "$missing" -eq 0 ] || echo "Only install the ones for file types you actually view."
 }
 
+# edit_command_for NAME -- print the function that edits a file called NAME:
+# its handler's scry_edit_*, or the text editor if no handler claims it.
+# Fails when its handler has no way to edit, so the file is just viewed.
+edit_command_for() {
+    local handler
+    if handler="$(scry_find_handler "$1")"; then
+        declare -F "scry_edit_$handler" >/dev/null || return 1
+        printf 'scry_edit_%s' "$handler"
+    else
+        printf 'scry_edit_text'
+    fi
+}
+
 view_one() {
-    local file="$1" name handler
+    local file="$1" name handler editor
     # shellcheck disable=SC2034  # read by the platform layer
     SCRY_FILE="$1"
     if [ -d "$file" ]; then
@@ -128,19 +144,12 @@ view_one() {
     fi
     name="$file"
     [ -n "$SCRY_TYPE" ] && name="stdin.$SCRY_TYPE"
-    # -e: edit where the handler can (scry_edit_NAME); an unclaimed file
-    # goes to the text editor. Otherwise fall through to a plain view.
-    # Stdin is only a spooled copy, so there's nothing to edit.
-    if [ "$SCRY_EDIT" = "1" ] && [ "$SCRY_PREVIEW" != "1" ] && [ "$file" != - ]; then
-        if handler="$(scry_find_handler "$name")"; then
-            if declare -F "scry_edit_$handler" >/dev/null; then
-                "scry_edit_$handler" "$file"
-                return
-            fi
-        else
-            scry_edit_text "$file"
-            return
-        fi
+    # -e edits where it can, else falls through to a plain view. Stdin is
+    # only a spooled copy, so there's nothing to edit.
+    if [ "$SCRY_EDIT" = "1" ] && [ "$SCRY_PREVIEW" != "1" ] && [ "$file" != - ] \
+        && editor="$(edit_command_for "$name")"; then
+        "$editor" "$file"
+        return
     fi
     if ! handler="$(scry_find_handler "$name")"; then
         scry_fallback "$file"
@@ -255,7 +264,8 @@ case "$SCRY_TYPE" in */*) usage_error "bad type '$SCRY_TYPE'" ;; esac
 [ "$SCRY_PREVIEW" = "1" ] && FORCE_WINDOW=0
 
 # -f opens windows and apps on this machine's screen, which over ssh is the
-# wrong machine (or none). SCRY_REMOTE=1/0 overrides the guess. Fall back to the normal terminal view instead.
+# wrong machine (or none). Fall back to the normal terminal view instead.
+# SCRY_REMOTE=1/0 overrides scry's guess.
 if [ "$FORCE_WINDOW" = "1" ] && scry_is_remote; then
     echo "scry: -f ignored: this looks like a remote session (SCRY_REMOTE=0 to override)" >&2
     FORCE_WINDOW=0
