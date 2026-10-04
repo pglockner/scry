@@ -64,7 +64,7 @@ bad() {
 PLATFORM=darwin DISP=""
 run() {
     : > "$LOG"
-    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" EDITOR=myed FZF_PREVIEW_COLUMNS=80 \
+    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" EDITOR=myed FZF_PREVIEW_COLUMNS=80 SSH_CONNECTION="${SSH:-}" SCRY_ALLOW_REMOTE="${ALLOW:-}" \
         SCRY_PLATFORM="$PLATFORM" DISPLAY="$DISP" SCRY_USER_HANDLERS="$WORK/handlers" \
         "$BASH_UNDER_TEST" "$ROOT/bin/scry" "$@" 2>&1 < "${STDIN:-/dev/null}")"
     rc=$?
@@ -129,6 +129,13 @@ run -P notes.md;        expect_called "glow -s dark" "-P is -p"
 run -T md plain.txt;    expect_called "glow" "-T is -t"
 run -Tmd plain.txt;     expect_called "glow" "-Tmd attached value"
 run -H;                 expect_out "model3d" "-H is -h"
+
+# --- -f over ssh falls back to the terminal view ---
+SSH="1.2.3.4 5 6.7.8.9 22" run -f notes.md
+expect_silent qlmanage "-f over ssh opens no window"; expect_called "glow -p" "-f over ssh views in the terminal"
+expect_out "-f ignored" "-f over ssh says so"
+SSH="1.2.3.4 5 6.7.8.9 22" ALLOW=1 run -f notes.md;  expect_called "qlmanage -p notes.md" "SCRY_ALLOW_REMOTE overrides"
+SSH="1.2.3.4 5 6.7.8.9 22" run notes.md;             expect_silent qlmanage "ssh without -f is untouched"
 
 # --- -e: edit where it's easy, else view ---
 run -e notes.md;        expect_called "myed notes.md" "-e markdown -> editor"

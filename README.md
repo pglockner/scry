@@ -132,6 +132,10 @@ window (`qlmanage -p`). Two macOS quirks:
   which also registers it). macOS asks you to approve the extension the first
   time it's used.
 
+Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
+since a window would open on the remote machine's screen. Set
+`SCRY_ALLOW_REMOTE=1` if you forward a display.
+
 ### `-t`, `--type`: pick the viewer yourself
 
 For stdin, and for files whose name doesn't say what they are:
@@ -206,6 +210,7 @@ It needs `make deps-fzf`.
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
+| `SCRY_ALLOW_REMOTE=1`   | Let `-f` open windows even over ssh (it's ignored there by default) |
 | `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 

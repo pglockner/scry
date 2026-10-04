@@ -254,6 +254,13 @@ case "$SCRY_TYPE" in */*) usage_error "bad type '$SCRY_TYPE'" ;; esac
 # A preview never opens a window, so --preview overrides -f.
 [ "$SCRY_PREVIEW" = "1" ] && FORCE_WINDOW=0
 
+# -f opens windows and apps on this machine's screen, which over ssh is the
+# wrong machine (or none). Fall back to the normal terminal view instead.
+if [ "$FORCE_WINDOW" = "1" ] && scry_is_remote; then
+    echo "scry: -f ignored: this looks like a remote session (SCRY_ALLOW_REMOTE=1 to override)" >&2
+    FORCE_WINDOW=0
+fi
+
 if [ "$MODE" = "fzf" ]; then
     fzf_pick "$@"
     exit "$SCRY_STATUS"
