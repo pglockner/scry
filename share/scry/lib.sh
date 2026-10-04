@@ -22,6 +22,10 @@ SCRY_RAW=0
 # Set by `scry -t EXT`: dispatch every file as if it had extension EXT.
 SCRY_TYPE=""
 
+# Set to 1 by `scry -e`: handlers with scry_edit_NAME() get to edit the file.
+# shellcheck disable=SC2034  # read by bin/scry
+SCRY_EDIT=0
+
 # Per-file state. Each file is viewed in its own subshell, so these start
 # fresh for every file and scry_cleanup runs when that file's view ends.
 # shellcheck disable=SC2034  # read by platform/linux.sh
@@ -39,7 +43,8 @@ fi
 #   Declare a handler. The handler must define scry_view_NAME(), which is
 #   called with one file path. It may also define scry_preview_NAME(), used
 #   under --preview; without one, previews show a short info summary
-#   (scry_info) instead. Extensions may be compound ("tar.gz").
+#   (scry_info) instead. And it may define scry_edit_NAME(), used under
+#   -e when there's an easy way to edit this type; without one, -e views. Extensions may be compound ("tar.gz").
 #   If several handlers claim an extension, the one registered last wins,
 #   so user handlers (loaded after the built-in ones) can override them.
 scry_register() {
@@ -147,6 +152,26 @@ scry_fallback() {
     else
         cat -- "$@"
     fi
+}
+
+# scry_is_remote -- succeed if windows and apps would open on a different
+# machine than the one you're looking at. SCRY_REMOTE=1 or 0 says so outright,
+# for shells with no ssh variables (a herdr or tmux server you attach to from
+# elsewhere); otherwise it's a guess from ssh's variables.
+scry_is_remote() {
+    case "${SCRY_REMOTE:-}" in
+        1) return 0 ;;
+        0) return 1 ;;
+    esac
+    [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ] || [ -n "${SSH_CLIENT:-}" ]
+}
+
+# scry_edit_text FILE -- edit FILE in $VISUAL, else $EDITOR, else vi.
+# The variable may carry arguments ("code -w"), so it's split on purpose.
+scry_edit_text() {
+    local ed="${VISUAL:-${EDITOR:-vi}}"
+    # shellcheck disable=SC2086
+    $ed "$1"
 }
 
 # scry_tmp -- make sure $SCRY_TMP is a private temp dir for the file being

@@ -8,3 +8,8 @@ scry_view_document() {
 scry_preview_document() {
     scry_doc_to_text "$1" | head -n 200
 }
+
+# The default app (Word, Pages, LibreOffice, ...) is the editor.
+scry_edit_document() {
+    scry_open "$1"
+}

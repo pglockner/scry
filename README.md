@@ -71,12 +71,15 @@ cmd | scry
 | `scry -`             | The same, as a file argument (`scry a.md - b.md`)                     |
 
 Options can go before or after the file names, and short ones combine
-(`scry -fA x`, `scry notes.md -f`). Use `--` before a name that starts with `-`.
+(`scry -fA x`, `scry notes.md -f`). Short options are case-insensitive (`-F` is
+`-f`, `-a` is `-A`), so no letter will ever mean two things. Use `--` before a
+name that starts with `-`.
 
 | Option                | What it does                                                                     |
 | --------------------- | -------------------------------------------------------------------------------- |
 | `-f`, `--full`        | Use the "full" variant of the viewer (windowed / extract; see below)             |
 | `-A`, `--show-all`    | Skip the handlers and show the file through `bat --show-all` (see below)         |
+| `-e`, `--edit`        | Open the file for editing where that's easy, else view it (see below)            |
 | `-p`, `--preview`     | Non-interactive output for previewers such as fzf (see below)                    |
 | `-t`, `--type EXT`    | Treat every file, and stdin, as if it ended in `.EXT` (see below)                |
 | `--fzf [DIR]`         | Pick files under `DIR` (default `.`) with fzf, then view them                    |
@@ -100,6 +103,21 @@ table is for macOS; on Linux, every window is the file's default app instead
 | zip, jar, whl                    | file listing              | extract, open in Finder           |
 | tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
 
+### `-e`, `--edit`: edit where it's easy
+
+`-e` is opportunistic: a file type with an easy way to edit gets it, and
+anything else is viewed as usual.
+
+| File type                     | `scry -e FILE` opens it in               |
+| ----------------------------- | ---------------------------------------- |
+| csv, tsv, psv                 | visidata (edits in place; Ctrl-S saves)  |
+| Markdown, YAML                | `$VISUAL`, else `$EDITOR`, else `vi`     |
+| rtf, doc, docx, odt           | the default app                          |
+| Unclaimed (plain text, code)  | `$VISUAL`, else `$EDITOR`, else `vi`     |
+| Everything else, and stdin    | viewed, as without `-e`                  |
+
+`-p` and `-A` override `-e`.
+
 ### Quick Look windows (macOS notes)
 
 PDFs, and markdown, images and 3D models under `-f`, open in a Quick Look
@@ -113,6 +131,12 @@ window (`qlmanage -p`). Two macOS quirks:
 - **Markdown under `-f` needs the QLMarkdown extension** (`make deps-quicklook`,
   which also registers it). macOS asks you to approve the extension the first
   time it's used.
+
+Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
+since a window would open on the remote machine's screen. scry only guesses
+from ssh's environment variables, so a shell that has none (a herdr or tmux
+server you attach to from another machine) needs `export SCRY_REMOTE=1`; use
+`SCRY_REMOTE=0` to allow windows over ssh, e.g. with a forwarded display.
 
 ### `-t`, `--type`: pick the viewer yourself
 
@@ -188,6 +212,7 @@ It needs `make deps-fzf`.
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
+| `SCRY_REMOTE`           | `1`: treat this shell as remote (`-f` is ignored); `0`: as local. Unset: guess from ssh |
 | `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 
@@ -283,6 +308,7 @@ What's available to handlers:
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
 | `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
 | `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
+| `scry_edit_NAME`, `scry_edit_text FILE` | Optional handler function run under `-e`; the helper opens FILE in `$VISUAL`/`$EDITOR` |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
 | `scry_tmp`, then `$SCRY_TMP`            | A private temp dir for this file, removed after its view       |
 | `scry_open_extracted DIR`               | Open extracted files; a lone top-level folder opens directly   |

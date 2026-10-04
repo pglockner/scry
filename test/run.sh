@@ -26,7 +26,7 @@ stub() {
     chmod +x "$STUBS/$1"
 }
 for b in viu vd mpv qlmanage osascript open textutil afplay mdls fzf imgcat \
-    xdg-open pandoc antiword ffplay apt-get; do
+    xdg-open pandoc antiword ffplay apt-get myed; do
     stub "$b"
 done
 stub pdfinfo 'echo "Pages:          3"'
@@ -64,7 +64,7 @@ bad() {
 PLATFORM=darwin DISP=""
 run() {
     : > "$LOG"
-    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" FZF_PREVIEW_COLUMNS=80 \
+    out="$(cd "$F" && env -i PATH="$STUBS:$SYSBIN" HOME="$WORK" TMPDIR="$T" EDITOR=myed FZF_PREVIEW_COLUMNS=80 SSH_CONNECTION="${SSH:-}" SCRY_REMOTE="${REMOTE:-}" \
         SCRY_PLATFORM="$PLATFORM" DISPLAY="$DISP" SCRY_USER_HANDLERS="$WORK/handlers" \
         "$BASH_UNDER_TEST" "$ROOT/bin/scry" "$@" 2>&1 < "${STDIN:-/dev/null}")"
     rc=$?
@@ -122,6 +122,31 @@ run .;                  expect_out "notes.md" "dir -> ls"
 run notes.md -f;        expect_called "qlmanage -p notes.md" "option after the file"
 run -fA plain.txt;      expect_called "bat --terminal-width=80 --paging=auto --show-all -- plain.txt" "bundled -fA"
 run -p -f notes.md;     expect_silent qlmanage "--preview overrides -f"
+run -F notes.md;        expect_called "qlmanage -p notes.md" "-F is -f"
+run -a plain.txt;       expect_called "--show-all" "-a is -A"
+run -fa plain.txt;      expect_called "--show-all" "bundled -fa"
+run -P notes.md;        expect_called "glow -s dark" "-P is -p"
+run -T md plain.txt;    expect_called "glow" "-T is -t"
+run -Tmd plain.txt;     expect_called "glow" "-Tmd attached value"
+run -H;                 expect_out "model3d" "-H is -h"
+
+# --- -f over ssh falls back to the terminal view ---
+SSH="1.2.3.4 5 6.7.8.9 22" run -f notes.md
+expect_silent qlmanage "-f over ssh opens no window"; expect_called "glow -p" "-f over ssh views in the terminal"
+expect_out "-f ignored" "-f over ssh says so"
+SSH="1.2.3.4 5 6.7.8.9 22" REMOTE=0 run -f notes.md; expect_called "qlmanage -p notes.md" "SCRY_REMOTE=0 allows windows over ssh"
+REMOTE=1 run -f notes.md;  expect_silent qlmanage "SCRY_REMOTE=1 marks a shell with no ssh variables remote"
+SSH="1.2.3.4 5 6.7.8.9 22" run notes.md;             expect_silent qlmanage "ssh without -f is untouched"
+
+# --- -e: edit where it's easy, else view ---
+run -e notes.md;        expect_called "myed notes.md" "-e markdown -> editor"
+run -E plain.txt;       expect_called "myed plain.txt" "-E unclaimed -> editor"
+run -e t.csv;           expect_called "vd t.csv" "-e csv -> visidata"
+run -e report.docx;     expect_called "open -- report.docx" "-e docx -> default app"
+run -e doc.pdf;         expect_called "qlmanage -p doc.pdf" "-e without an editor views"
+run -e song.ogg;        expect_silent myed "-e audio is not edited"
+run -pe notes.md;       expect_silent myed "--preview overrides -e"
+STDIN="$F/plain.txt" run -e; expect_silent myed "-e leaves stdin alone"
 run -- -dash.csv;       expect_called "vd ./-dash.csv" "dash-leading name becomes ./-name"
 run -z;                 expect_rc 2 "unknown option"
 run -t;                 expect_rc 2 "-t without a value"

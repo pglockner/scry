@@ -30,3 +30,7 @@ scry_preview_markdown() {
     [ -n "$w" ] && args+=(-w "$w")
     glow "${args[@]}" - < "$1"
 }
+
+scry_edit_markdown() {
+    scry_edit_text "$1"
+}
