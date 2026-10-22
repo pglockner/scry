@@ -2,7 +2,6 @@ PREFIX ?= $(HOME)/.local
 BINDIR   = $(DESTDIR)$(PREFIX)/bin
 SHAREDIR = $(DESTDIR)$(PREFIX)/share/scry
 QLMD_APPEX = /Applications/QLMarkdown.app/Contents/PlugIns/Markdown QL Extension.appex
-DEP_FORMULAE = bat glow viu visidata f3d fzf mpv pandoc poppler ffmpeg
 
 # The deps targets use Homebrew, which also runs on Linux. Without it, say
 # what to do instead of failing on "brew: command not found".
@@ -96,10 +95,12 @@ uninstall-quicklook:
 	-qlmanage -r cache >/dev/null 2>&1
 
 # Helpers may be used by other tools (bat and glow often are), so this
-# asks first and only touches formulae that are actually installed.
+# asks first and only touches formulae that are actually installed. The
+# list is every `brew "..."` line in the Brewfiles; casks (qlmarkdown)
+# have their own uninstall target.
 uninstall-deps:
 	@command -v brew >/dev/null 2>&1 || { echo "Homebrew not found; remove helpers with your package manager."; exit 0; }; \
-	installed=""; for p in $(DEP_FORMULAE); do \
+	installed=""; for p in $$(sed -n 's/^brew "\([^"]*\)".*/\1/p' Brewfile*); do \
 		brew list --formula "$$p" >/dev/null 2>&1 && installed="$$installed $$p"; \
 	done; \
 	if [ -z "$$installed" ]; then echo "None of the helpers are installed."; exit 0; fi; \
