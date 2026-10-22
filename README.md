@@ -330,8 +330,7 @@ to the next file. The path a handler receives never starts with `-` (scry
 passes `./-name` instead), so viewers that don't take `--` are safe too.
 Handlers never delete their own temp files: anything under `$SCRY_TMP` is
 removed when the view ends, unless a window opened with `scry_open` or
-`scry_window` may still be reading it. (`scry_qlmanage_preview`, the old name
-of `scry_window`, still works.)
+`scry_window` may still be reading it.
 
 Handlers stay portable by calling the platform layer instead of OS tools:
 `scry_doc_to_text`, `scry_pdf_pages`, `scry_audio_info`, `scry_video_info`,

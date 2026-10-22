@@ -227,12 +227,6 @@ scry_open_extracted() {
     scry_open "$dir"
 }
 
-# The name scry_window had before there was more than one platform; kept
-# so user handlers that call it still work.
-scry_qlmanage_preview() {
-    scry_window "$@"
-}
-
 # Show an image file: a window under -f, else imgcat (iTerm2) or viu.
 scry_show_image() {
     local file="$1"
