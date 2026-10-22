@@ -40,13 +40,15 @@ if ! command -v bat >/dev/null 2>&1 && command -v batcat >/dev/null 2>&1; then
 fi
 
 # scry_register NAME "EXT EXT ..." "HELP"
-#   Declare a handler. The handler must define scry_view_NAME(), which is
-#   called with one file path. It may also define scry_preview_NAME(), used
-#   under --preview; without one, previews show a short info summary
-#   (scry_info) instead. And it may define scry_edit_NAME(), used under
-#   -e when there's an easy way to edit this type; without one, -e views. Extensions may be compound ("tar.gz").
-#   If several handlers claim an extension, the one registered last wins,
-#   so user handlers (loaded after the built-in ones) can override them.
+#   Declare a handler. It must define scry_view_NAME(), which is called
+#   with one file path. Optionally it may also define:
+#     scry_preview_NAME()  used under --preview; without it, previews show
+#                          a short summary (scry_info)
+#     scry_edit_NAME()     used under -e, when there's an easy way to edit
+#                          this type; without it, -e just views
+#   Extensions may be compound ("tar.gz"). If several handlers claim an
+#   extension, the one registered last wins, so user handlers (loaded after
+#   the built-in ones) can override them.
 scry_register() {
     local name="$1" exts="$2" help="$3" i
     for ((i = 0; i < ${#SCRY_H_NAMES[@]}; i++)); do

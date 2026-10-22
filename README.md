@@ -196,9 +196,9 @@ What each type shows:
 (`fzf --preview 'scry --preview -A {}'`).
 
 `scry --fzf` wraps all of this into a file picker: it lists the files under a
-directory, sorted with the first one selected, previews each with `scry --preview`, and views what you select
-(Tab to select several). Flags given with it carry over, so `scry -A --fzf`
-previews and views raw.
+directory, sorted with the first one selected, previews each with
+`scry --preview`, and views what you select (Tab to select several). Flags
+given with it carry over, so `scry -A --fzf` previews and views raw.
 
 ```sh
 scry --fzf            # files under the current directory
