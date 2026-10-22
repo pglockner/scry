@@ -9,6 +9,7 @@ scry data.csv        # interactive table (visidata)
 scry part.stl        # rendered preview of a 3D model (f3d)
 scry archive.tar.gz  # archive listing
 scry report.docx     # converted to plain text (textutil, or pandoc on Linux)
+scry page.html       # highlighted source; scry -f page.html opens it in your browser
 scry main.py         # syntax-highlighted (bat), or plain cat without bat
 curl -s URL | scry -t md   # stdin, viewed as markdown
 ```
@@ -99,6 +100,7 @@ table is for macOS; on Linux, every window is the file's default app instead
 | Images                           | inline in the terminal    | Quick Look window                 |
 | 3D models (stl, obj, step, ...)  | rendered image, inline    | rendered image, Quick Look window |
 | PDF                              | Quick Look window         | Preview.app                       |
+| HTML (html, htm, xhtml)          | highlighted source (bat)  | default browser (`open`)          |
 | Audio                            | plays (mpv, else afplay)  | mpv window with album art         |
 | zip, jar, whl                    | file listing              | extract, open in Finder           |
 | tar, tar.gz, tar.bz2, tar.xz     | file listing              | extract, open in Finder           |
@@ -111,7 +113,7 @@ anything else is viewed as usual.
 | File type                     | `scry -e FILE` opens it in               |
 | ----------------------------- | ---------------------------------------- |
 | csv, tsv, psv                 | visidata (edits in place; Ctrl-S saves)  |
-| Markdown, YAML                | `$VISUAL`, else `$EDITOR`, else `vi`     |
+| Markdown, YAML, HTML          | `$VISUAL`, else `$EDITOR`, else `vi`     |
 | rtf, doc, docx, odt           | the default app                          |
 | Unclaimed (plain text, code)  | `$VISUAL`, else `$EDITOR`, else `vi`     |
 | Everything else, and stdin    | viewed, as without `-e`                  |
@@ -181,7 +183,7 @@ What each type shows:
 
 | File type                         | Preview                                                    |
 | --------------------------------- | ---------------------------------------------------------- |
-| Text, code, yaml                  | `bat` with line numbers (first 500 lines)                  |
+| Text, code, yaml, html            | `bat` with line numbers (first 500 lines)                  |
 | Markdown                          | rendered by `glow` (dark style; set `GLAMOUR_STYLE` to change) |
 | Images, 3D models                 | block-character image at pane width (`viu`; `f3d` renders 3D) |
 | CSV / TSV / PSV                   | first 30 rows as aligned columns                           |
