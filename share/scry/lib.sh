@@ -238,7 +238,16 @@ scry_show_image() {
         imgcat "$file"
     else
         scry_require viu "${SCRY_HINT_VIU:-$SCRY_INSTALL viu}"
+        # viu asks the terminal whether it speaks the kitty graphics
+        # protocol. Ghostty's reply arrives with echo still on, so it's
+        # printed over the command line; turn echo off while viu runs.
+        local tty=""
+        [ ! -t 0 ] || tty="$(stty -g 2>/dev/null)" || tty=""
+        [ -z "$tty" ] || stty -echo 2>/dev/null
         viu "$file"
+        local rc=$?
+        [ -z "$tty" ] || stty "$tty" 2>/dev/null
+        return "$rc"
     fi
 }
 
