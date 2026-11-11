@@ -30,10 +30,7 @@ link:
 	@echo "Linked $(BINDIR)/scry -> $(CURDIR)/bin/scry"
 
 uninstall:
-	rm -f "$(BINDIR)/scry"
-	rm -rf "$(SHAREDIR)"
-	@echo "Removed scry from $(PREFIX). Helpers (bat, glow, ...) and any"
-	@echo "handlers in ~/.config/scry/handlers were left alone; see the README."
+	@PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)" ./install.sh --uninstall
 
 uninstall-quicklook:
 	$(MACOS_ONLY)
@@ -57,7 +54,7 @@ uninstall-deps:
 	if [ "$$ans" = y ] || [ "$$ans" = Y ]; then brew uninstall $$installed; else echo "Skipped."; fi
 
 lint:
-	shellcheck install.sh bin/scry share/scry/lib.sh share/scry/platform/*.sh share/scry/handlers/*.sh test/run.sh
+	shellcheck install.sh bin/scry share/scry/lib.sh share/scry/platform/*.sh share/scry/handlers/*.sh test/run.sh demo/*.sh
 
 test:
 	test/run.sh

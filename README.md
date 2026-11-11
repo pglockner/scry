@@ -387,15 +387,19 @@ you trust. Keep them bash 3.2-compatible.
 ## Uninstall
 
 ```sh
-make uninstall
+./install.sh --uninstall
 ```
 
-This removes the `scry` command and its `share/scry` files (for a `make link`
-install, just the symlink). It deliberately does **not** touch:
+Run it from your scry checkout. It works on every system the installer
+does, and doesn't need `make`. If you installed with `--prefix DIR`, pass
+the same `--prefix DIR` (`make uninstall`, with the same `PREFIX=`, does the
+same). This removes the `scry` command and its `share/scry` files (for a
+`make link` install, just the symlink). It deliberately does **not** touch:
 
 - **The helpers.** `bat`, `glow`, `fzf` and the rest may be used by other
-  tools. With Homebrew, `make uninstall-deps` lists the ones that are
-  installed and asks before running `brew uninstall` on them.
+  tools. Remove the ones you don't want with your package manager. With
+  Homebrew, `make uninstall-deps` lists the ones that are installed and asks
+  before running `brew uninstall` on them.
 - **The Quick Look extension**, if you installed the `quicklook` group.
   `make uninstall-quicklook` unregisters it and removes the `qlmarkdown` cask.
 - **Your own handlers** in `~/.config/scry/handlers/`.
@@ -407,7 +411,7 @@ make link     # run scry straight from this checkout
 make lint     # shellcheck (brew install shellcheck)
 make test     # test suite; every helper is stubbed, so nothing needs installing
 SCRY_BASH=/bin/bash make test   # ...under macOS's stock bash 3.2
-vhs demo/demo.tape              # re-record the README's demo (brew install vhs)
+demo/record.sh                  # re-record the README's demo in Ghostty (macOS)
 ```
 
 The tests run both platform layers on any OS. CI runs lint on Linux, and the

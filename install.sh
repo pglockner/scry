@@ -7,6 +7,7 @@
 #   ./install.sh --yes           no questions: scry and the recommended helpers
 #   ./install.sh --with fzf,3d   scry and these helper groups, no questions
 #   ./install.sh --no-helpers    scry only (this is what `make install` runs)
+#   ./install.sh --uninstall     remove scry (this is what `make uninstall` runs)
 #   ./install.sh --dry-run       show what it would run, change nothing
 #
 # Installs into ~/.local unless PREFIX (or --prefix) says otherwise; DESTDIR
@@ -20,7 +21,7 @@ cd "$(dirname "$0")"
 
 PREFIX="${PREFIX:-$HOME/.local}"
 DESTDIR="${DESTDIR:-}"
-DRY_RUN=0 YES=0 HELPERS=1 WITH=""
+DRY_RUN=0 YES=0 HELPERS=1 UNINSTALL=0 WITH=""
 
 # Helper groups, in the order they're offered:
 #   NAME  OS (any, darwin, linux)  RECOMMENDED (y/n)  WHAT IT ENABLES
@@ -55,6 +56,7 @@ QLMD_APPEX="/Applications/QLMarkdown.app/Contents/PlugIns/Markdown QL Extension.
 usage() {
     cat <<EOF
 Usage: ./install.sh [--yes | --with GROUPS | --no-helpers] [--dry-run] [--prefix DIR]
+       ./install.sh --uninstall [--dry-run] [--prefix DIR]
 
 Installs scry into PREFIX (default ~/.local), then the helpers it uses,
 with this system's package manager.
@@ -62,6 +64,7 @@ with this system's package manager.
   -y, --yes          don't ask: install the recommended helper groups
   --with GROUPS      install these groups (comma-separated, or "all"), don't ask
   --no-helpers       install scry only
+  --uninstall        remove scry from PREFIX; helpers are left installed
   -n, --dry-run      print the commands, run nothing
   --prefix DIR       install scry into DIR/bin and DIR/share/scry
 
@@ -238,6 +241,17 @@ install_scry() {
     say "Installed $bin/scry and $share"
 }
 
+# uninstall_scry -- remove what install_scry (or `make link`) put in PREFIX.
+# Helpers are left alone: other tools may use them.
+uninstall_scry() {
+    local bin="$DESTDIR$PREFIX/bin" share="$DESTDIR$PREFIX/share/scry"
+    quietly rm -f "$bin/scry"
+    quietly rm -rf "$share"
+    say "Removed $bin/scry and $share"
+    say "Helpers (bat, glow, ...) and your handlers in ~/.config/scry/handlers"
+    say "were left alone; see the README's Uninstall section to remove them."
+}
+
 # Homebrew: each group is a Brewfile (Brewfile for core).
 install_brew() {
     local g file
@@ -342,6 +356,7 @@ while [ $# -gt 0 ]; do
         --with)       [ $# -ge 2 ] || die "--with needs a list of groups"; WITH="$2"; shift ;;
         --with=*)     WITH="${1#--with=}" ;;
         --no-helpers) HELPERS=0 ;;
+        --uninstall)  UNINSTALL=1 ;;
         -n|--dry-run) DRY_RUN=1 ;;
         --prefix)     [ $# -ge 2 ] || die "--prefix needs a directory"; PREFIX="$2"; shift ;;
         --prefix=*)   PREFIX="${1#--prefix=}" ;;
@@ -357,6 +372,11 @@ CHOSEN="" FAILED="" UNAVAILABLE=""
 [ -z "$WITH" ] || parse_with
 case "$PREFIX" in /*) ;; *) PREFIX="$CALLER_DIR/$PREFIX" ;; esac
 case "$DESTDIR" in /*|"") ;; *) DESTDIR="$CALLER_DIR/$DESTDIR" ;; esac
+
+if [ "$UNINSTALL" = 1 ]; then
+    uninstall_scry
+    exit 0
+fi
 
 if [ "$HELPERS" = 0 ]; then
     install_scry
