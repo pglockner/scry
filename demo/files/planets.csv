@@ -1,0 +1,9 @@
+planet,type,moons,day_hours,year_days,mean_temp_c
+Mercury,rocky,0,4222.6,88,167
+Venus,rocky,0,2802.0,224.7,464
+Earth,rocky,1,24.0,365.2,15
+Mars,rocky,2,24.7,687,-65
+Jupiter,gas giant,95,9.9,4331,-110
+Saturn,gas giant,146,10.7,10747,-140
+Uranus,ice giant,28,17.2,30589,-195
+Neptune,ice giant,16,16.1,59800,-200

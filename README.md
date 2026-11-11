@@ -1,6 +1,13 @@
 # scry
 
-Like `cat`, but it picks a better viewer based on the file extension.
+[![CI](https://github.com/pglockner/scry/actions/workflows/ci.yml/badge.svg)](https://github.com/pglockner/scry/actions/workflows/ci.yml)
+
+**One command to look at any file from the terminal.** Like `cat`, but it
+knows what the file is: markdown comes out rendered, images and 3D models are
+drawn right in the terminal, a CSV opens as a real table, and code is
+syntax-highlighted.
+
+![scry rendering markdown, an image, a 3D model, a CSV and Python code, then browsing them all with live previews in scry --fzf](demo/demo.gif)
 
 ```
 scry notes.md        # rendered markdown (glow)
@@ -11,50 +18,96 @@ scry archive.tar.gz  # archive listing
 scry report.docx     # converted to plain text (textutil, or pandoc on Linux)
 scry page.html       # highlighted source; scry -f page.html opens it in your browser
 scry main.py         # syntax-highlighted (bat), or plain cat without bat
+scry --fzf           # browse a folder with live previews of every file
 curl -s URL | scry -t md   # stdin, viewed as markdown
 ```
 
-Runs on macOS and Linux, including WSL on Windows. It's pure bash (it
-works with macOS's stock bash 3.2), so no zsh is needed. On macOS it uses
-the system's own tools (Quick Look, `textutil`, `afplay`, `open`); on Linux,
-their usual counterparts (see [Linux](#linux)).
-
-A recognized extension whose viewer isn't installed is an error with an
-install hint, never a silent fallback, so you always know why you got the
-output you did. Like `cat`, an error on one file (missing file, missing
-viewer) doesn't stop the others; scry exits 1 if any of them failed.
+- **Nothing to remember.** One command for every file; scry picks the viewer.
+- **Never a mystery.** A file type whose viewer isn't installed is an error
+  that says what to install, never a silent fallback. Like `cat`, one bad
+  file doesn't stop the rest (scry exits 1 if any failed).
+- **Install only what you use.** Every viewer is optional, and
+  `scry --doctor` shows which ones you have.
+- **macOS and Linux, WSL included.** Pure bash that runs on macOS's stock
+  bash 3.2, so no zsh needed. It uses the system's own tools (Quick Look,
+  `textutil`, `open` on macOS; `xdg-open`, `pandoc` on Linux; see
+  [Linux](#linux)).
+- **Easy to extend.** A new file type is a handler script of about ten lines
+  ([Adding your own file types](#adding-your-own-file-types)).
 
 ## Install
 
 ```sh
 git clone https://github.com/pglockner/scry.git && cd scry
-make install          # copies to ~/.local (override: make install PREFIX=/usr/local)
-make deps             # core helpers: bat, glow, viu (Homebrew)
+./install.sh
 ```
 
-Make sure `~/.local/bin` is on your `PATH`. `make install` tells you if it isn't.
-`make help` lists every target. On Linux, you can use your distro's packages
-instead of Homebrew: see [Linux](#linux).
+The same two commands work on macOS and on Linux. The installer works out
+which system it's on and handles the rest:
 
-## Pick your helpers
+1. It copies scry into `~/.local` (use `--prefix DIR` to put it somewhere
+   else) and, if `~/.local/bin` isn't on your `PATH`, prints the line to add
+   to your shell's startup file.
+2. It finds your package manager: Homebrew on macOS; apt, dnf, pacman, zypper
+   or apk on Linux. Then it asks which groups of helpers you want (below).
+   Groups you already have are skipped.
+3. It installs them. On Linux, anything your distro doesn't package comes
+   from Homebrew if you have it. Otherwise the installer lists what's still
+   missing. It finishes with `scry --doctor`, which shows what's installed
+   and how to get the rest.
 
-Only install what you'll use. Each group is its own Brewfile (Homebrew runs
-on Linux too):
+Run it again any time to add more: `./install.sh --with fzf,3d`. Use
+`./install.sh --yes` to install the recommended groups without being asked,
+or `--dry-run` to see the exact commands first. `./install.sh --help` lists
+every option.
 
-| Command               | Installs                     | Enables                              |
-| --------------------- | ---------------------------- | ------------------------------------ |
-| `make deps`           | bat, glow, viu               | text/code, yaml, markdown, images    |
-| `make deps-data`      | visidata                     | csv / tsv / psv                      |
-| `make deps-3d`        | f3d (several hundred MB)     | stl / 3mf / obj / ply / gltf / step  |
-| `make deps-audio`     | mpv (over 1 GB: pulls in LLVM) | audio progress, `-f` album art, ogg, mkv / webm / avi video |
-| `make deps-fzf`       | fzf                          | `scry --fzf` file picker             |
-| `make deps-linux`     | pandoc, poppler, ffmpeg      | Linux only: documents, pdf page counts, media details, audio without mpv. Not `.doc`: antiword isn't in Homebrew, so get it from your distro |
-| `make deps-quicklook` | qlmarkdown (cask)            | macOS only: rendered markdown for `scry -f` |
+| Group       | Enables                                               | macOS (Homebrew)   | Linux (your distro's packages) |
+| ----------- | ----------------------------------------------------- | ------------------ | ------------------------------ |
+| `core`*     | text/code, yaml, markdown, images                     | bat, glow, viu     | bat, glow, viu                 |
+| `linux`*    | documents, pdf page counts, media details, opening files in their app | built into macOS | pandoc, antiword, poppler, ffmpeg, xdg-utils (wslu on WSL), file, column |
+| `data`      | csv / tsv / psv                                       | visidata           | visidata                       |
+| `fzf`       | `scry --fzf` file picker                              | fzf                | fzf                            |
+| `3d`        | stl / 3mf / obj / ply / gltf / step                   | f3d (several hundred MB) | f3d                      |
+| `audio`     | audio progress, `-f` album art, ogg, mkv / webm / avi video | mpv (over 1 GB: pulls in LLVM) | mpv          |
+| `quicklook` | rendered markdown for `scry -f` (macOS only)          | qlmarkdown (cask)  | none: Linux renders with pandoc |
 
-Or use Homebrew directly, e.g. `brew bundle --file=Brewfile.3d`.
+\* Recommended, so `--yes` installs these.
 
-`scry --doctor` shows which helpers are installed, what each one enables,
-and how to install the missing ones on your system.
+Distros don't all package everything. Debian and Ubuntu have no glow or viu,
+for example. When something can't be installed, the installer says so, and
+`scry --doctor` suggests other ways to get it.
+
+### Installing by hand
+
+If you'd rather not run the installer, `make install` copies scry into
+`~/.local` (`make install PREFIX=/usr/local` puts it elsewhere). Then install
+the helpers you want:
+
+**macOS**, with [Homebrew](https://brew.sh). Each group is a Brewfile:
+
+```sh
+brew bundle --file=Brewfile            # core: bat, glow, viu
+brew bundle --file=Brewfile.data       # also .fzf, .3d, .audio
+```
+
+For `quicklook`, use `./install.sh --with quicklook`, because macOS doesn't
+register the cask's Quick Look extension on its own.
+
+**Linux**, with your package manager. On Debian and Ubuntu:
+
+```sh
+sudo apt install bat fzf visidata mpv f3d pandoc antiword poppler-utils ffmpeg xdg-utils
+```
+
+Debian and Ubuntu have no packages for glow or viu. Use Homebrew
+(`brew install glow viu`), or `go install github.com/charmbracelet/glow@latest`
+and `cargo install viu`. Other distros mostly use the same package names
+(Arch: `poppler`, `pandoc-cli`; Fedora: `ffmpeg-free`; openSUSE:
+`poppler-tools`). Debian and Ubuntu name bat's command `batcat`, and scry
+finds it under either name.
+
+`scry --doctor` lists every helper scry can use, what each one enables, and
+the install command for your system.
 
 ## Usage
 
@@ -130,9 +183,9 @@ window (`qlmanage -p`). Two macOS quirks:
   front with AppleScript, which needs Accessibility permission for your
   terminal app (System Settings -> Privacy & Security -> Accessibility).
   Without it the window still opens, just not focused.
-- **Markdown under `-f` needs the QLMarkdown extension** (`make deps-quicklook`,
-  which also registers it). macOS asks you to approve the extension the first
-  time it's used.
+- **Markdown under `-f` needs the QLMarkdown extension**
+  (`./install.sh --with quicklook`, which also registers it). macOS asks you
+  to approve the extension the first time it's used.
 
 Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
 since a window would open on the remote machine's screen. scry only guesses
@@ -205,7 +258,7 @@ scry --fzf            # files under the current directory
 scry --fzf ~/Documents
 ```
 
-It needs `make deps-fzf`.
+It needs fzf (`./install.sh --with fzf`).
 
 ### Environment variables
 
@@ -249,25 +302,13 @@ console, say); when it can't, scry says why and suggests `mpv --vo=tct` to play
 the video as text in the terminal. Everything that renders in the terminal
 works the same everywhere.
 
-Install the helpers with your package manager. On Debian and Ubuntu:
-
-```sh
-sudo apt install bat fzf visidata mpv f3d pandoc antiword poppler-utils ffmpeg xdg-utils
-```
-
-That command leaves out glow and viu because `apt` can't install them:
-Debian and Ubuntu have no packages for either. Like on macOS, they're a
-separate install. Use Homebrew (`brew install glow viu`), or
-`go install github.com/charmbracelet/glow@latest` and `cargo install viu`.
-
-Debian and Ubuntu also package bat under the name `batcat`; scry finds it
-under either name. Other distros mostly use the same package names
-(`poppler` instead of `poppler-utils` on Arch). `scry --doctor` gives install
-commands for your package manager.
+To install the Linux helpers, see [Install](#install): `./install.sh` picks
+the packages for your distro.
 
 **WSL (Windows):** scry runs in WSL like on any Linux, and `-f` views open in
-Windows apps when `wslview` is installed (`sudo apt install wslu`). In
-Windows Terminal, viu draws images with block characters.
+Windows apps through `wslview` (from `wslu`, which the installer's `linux`
+group installs under WSL). In Windows Terminal, viu draws images with block
+characters.
 
 ## Adding your own file types
 
@@ -355,7 +396,7 @@ install, just the symlink). It deliberately does **not** touch:
 - **The helpers.** `bat`, `glow`, `fzf` and the rest may be used by other
   tools. With Homebrew, `make uninstall-deps` lists the ones that are
   installed and asks before running `brew uninstall` on them.
-- **The Quick Look extension**, if you ran `make deps-quicklook`.
+- **The Quick Look extension**, if you installed the `quicklook` group.
   `make uninstall-quicklook` unregisters it and removes the `qlmarkdown` cask.
 - **Your own handlers** in `~/.config/scry/handlers/`.
 
@@ -366,10 +407,12 @@ make link     # run scry straight from this checkout
 make lint     # shellcheck (brew install shellcheck)
 make test     # test suite; every helper is stubbed, so nothing needs installing
 SCRY_BASH=/bin/bash make test   # ...under macOS's stock bash 3.2
+vhs demo/demo.tape              # re-record the README's demo (brew install vhs)
 ```
 
 The tests run both platform layers on any OS. CI runs lint on Linux, and the
-tests and an install check on macOS (bash 3.2) and Linux.
+tests and an install check on macOS (bash 3.2) and Linux. The demo plays the
+files in [`demo/files/`](demo/files).
 
 ## License
 
