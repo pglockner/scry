@@ -7,7 +7,7 @@ scry_helper mpv "audio playback with progress, album-art window (-f), ogg/opus, 
 scry_view_audio() {
     local file="$1"
     if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_require mpv "$SCRY_INSTALL mpv (or: make deps-audio)"
+        scry_require mpv "$SCRY_INSTALL mpv"
         # mpv's defaults: a window showing embedded album art, if any.
         mpv -- "$file"
         return

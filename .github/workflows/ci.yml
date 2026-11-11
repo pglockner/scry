@@ -29,6 +29,7 @@ jobs:
       - name: install, link, and install over a link
         run: |
           p="$RUNNER_TEMP/prefix"
+          ./install.sh --dry-run --yes --prefix "$p" </dev/null && test ! -e "$p"
           make install PREFIX="$p" && "$p/bin/scry" --doctor
           make link PREFIX="$p" && test -L "$p/bin/scry"
           make install PREFIX="$p" && test ! -L "$p/bin/scry" && "$p/bin/scry" --doctor

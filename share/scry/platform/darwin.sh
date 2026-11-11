@@ -79,7 +79,7 @@ scry_window() {
     ' >/dev/null 2>&1 &
 }
 
-# Rendered by the QLMarkdown extension (make deps-quicklook).
+# Rendered by the QLMarkdown extension (./install.sh --with quicklook).
 scry_markdown_window() {
     scry_window "$1"
 }
@@ -108,7 +108,7 @@ scry_play_audio() {
     # afplay can't decode Ogg containers.
     case "$(scry_lower "$1")" in
         *.ogg|*.oga|*.opus)
-            echo "scry: afplay can't play Ogg; $SCRY_INSTALL mpv (or: make deps-audio)" >&2
+            echo "scry: afplay can't play Ogg; $SCRY_INSTALL mpv" >&2
             exit 1
             ;;
     esac

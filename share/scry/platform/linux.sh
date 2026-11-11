@@ -38,7 +38,7 @@ elif command -v brew >/dev/null 2>&1; then
 else
     SCRY_INSTALL="install"
 fi
-SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has most of them: make deps"
+SCRY_DOCTOR_NOTE="Not packaged by your distro? Homebrew runs on Linux and has most of them: brew install NAME"
 SCRY_WINDOW_DESC="default app"
 SCRY_MARKDOWN_DESC="rendered by pandoc, in your browser"
 SCRY_FOLDER_DESC="file manager"
