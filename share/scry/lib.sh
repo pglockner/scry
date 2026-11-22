@@ -44,6 +44,8 @@ fi
 # scry_register NAME "EXT EXT ..." "HELP"
 #   Declare a handler. It must define scry_view_NAME(), which is called
 #   with one file path. Optionally it may also define:
+#     scry_full_NAME()     used under -f, the heavier, windowed variant;
+#                          without it, -f just views
 #     scry_preview_NAME()  used under --preview; without it, previews show
 #                          a short summary (scry_info)
 #     scry_edit_NAME()     used under -e, when there's an easy way to edit
@@ -307,7 +309,25 @@ scry_open_extracted() {
     scry_open "$dir"
 }
 
-# Show an image file: a window under -f, else imgcat (iTerm2) or viu.
+# scry_open_archive FILE EXTRACT -- extract the archive FILE and open its
+# contents in the file manager. EXTRACT is a function, called as
+# `EXTRACT FILE DIR`, that extracts FILE into the empty folder DIR. DIR is
+# named for the archive (so the window says "notes", not "scry.McJ2WU") and
+# sits in this file's temp dir, which is kept for the window. macOS's
+# __MACOSX clutter is dropped, and a lone top-level folder opens directly.
+scry_open_archive() {
+    local dest
+    scry_need_window
+    scry_tmp
+    dest="$SCRY_TMP/$(scry_stem "$1")"
+    mkdir "$dest"
+    "$2" "$1" "$dest"
+    rm -rf "$dest/__MACOSX"
+    scry_open_extracted "$dest"
+}
+
+# Show an image file in the terminal: imgcat in iTerm2, else viu. (Under -f
+# it opens a window instead, for user handlers written before scry_full_*.)
 scry_show_image() {
     local file="$1"
     if [ "$FORCE_WINDOW" = "1" ]; then

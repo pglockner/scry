@@ -2,11 +2,11 @@
 scry_register pdf "pdf" "$SCRY_PDF_DESC"
 
 scry_view_pdf() {
-    if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_open "$1" Preview   # the app is macOS's; elsewhere, the default app
-    else
-        scry_window "$1"
-    fi
+    scry_window "$1"
+}
+
+scry_full_pdf() {
+    scry_open "$1" Preview   # the app is macOS's; elsewhere, the default app
 }
 
 # The window is for viewing, not previewing; show a summary.

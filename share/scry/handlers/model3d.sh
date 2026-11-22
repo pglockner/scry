@@ -13,12 +13,23 @@ scry_render_model3d() {
     [ -s "$SCRY_TMP/model.png" ]
 }
 
-scry_view_model3d() {
+# scry_must_render_model3d FILE -- render FILE like scry_render_model3d,
+# or fail with an error saying so.
+scry_must_render_model3d() {
     if ! scry_render_model3d "$1"; then
         echo "scry: f3d failed to render '$1' (is it a valid 3D model?)" >&2
         return 1
     fi
+}
+
+scry_view_model3d() {
+    scry_must_render_model3d "$1"
     scry_show_image "$SCRY_TMP/model.png"
+}
+
+scry_full_model3d() {
+    scry_must_render_model3d "$1"
+    scry_window "$SCRY_TMP/model.png"
 }
 
 scry_preview_model3d() {

@@ -320,10 +320,16 @@ wherever `SCRY_USER_HANDLERS` points). Any `*.sh` file there is loaded after
 the built-ins, so a handler that claims an extension already taken wins.
 
 A handler declares itself, optionally lists the helper program it needs, and
-defines one function, `scry_view_<name>`, which receives the file path. It can
-also define `scry_preview_<name>` for `--preview`; without one, previews of
-that type show a short summary, so a handler is never run interactively inside
-a preview pane by accident.
+defines one function, `scry_view_<name>`, which receives the file path. Each
+of scry's modes has an optional function of its own, which scry calls in
+place of the view when it's defined:
+
+- `scry_full_<name>` for `-f`, the full variant. Without one, `-f` shows the
+  normal view.
+- `scry_preview_<name>` for `--preview`. Without one, previews of that type
+  show a short summary, so a handler is never run interactively inside a
+  preview pane by accident.
+- `scry_edit_<name>` for `-e`. Without one, `-e` shows the normal view.
 
 ```bash
 # ~/.config/scry/handlers/json.sh
@@ -352,14 +358,13 @@ What's available to handlers:
 | `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`, and give its install hint     |
 | `scry_require BIN ["HINT"]`             | Exit if `BIN` is missing, with HINT or its `scry_helper` hint  |
 | `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
-| `scry_edit_NAME`, `scry_edit_text FILE` | Optional handler function run under `-e`; the helper opens FILE in `$VISUAL`/`$EDITOR` |
-| `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
+| `scry_edit_text FILE`                   | Open FILE in `$VISUAL`/`$EDITOR`, for a `scry_edit_NAME`       |
 | `scry_tmp`, then `$SCRY_TMP`            | A private temp dir for this file, removed after its view       |
-| `scry_open_extracted DIR`               | Open extracted files; a lone top-level folder opens directly   |
+| `scry_open_archive FILE EXTRACT`        | Extract FILE with `EXTRACT FILE DIR` and open the contents in the file manager |
 | `scry_open FILE [APP]`                  | Open FILE in its app (on macOS, in APP if given), keeping `$SCRY_TMP` for it |
 | `scry_window FILE`                      | A viewing window: Quick Look on macOS, the default app on Linux |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
-| `scry_show_image FILE`                  | Show an image the way scry does                                |
+| `scry_show_image FILE`                  | Show an image in the terminal the way scry does                |
 | `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |
 | `scry_bat_view ARGS...`                 | Run `bat` (or `batcat`) at the right width; honors `--preview` and `-A` |
 | `scry_term_width`                       | Print the width to render at (the fzf pane's, if previewing)   |

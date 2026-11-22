@@ -218,6 +218,16 @@ run -f hollow.tar
 dest="$(find "$T" -mindepth 3 -maxdepth 3 -type d -name hollow)"
 expect_called "open -- $dest" "an empty folder just opens in Finder"
 rm -rf "${T:?}"/*
+# A zip from macOS's Compress: one folder plus __MACOSX clutter, which is
+# dropped before looking for a lone folder.
+(cd "$F" && mkdir -p z/pkg z/__MACOSX && cp plain.txt z/pkg/ && : > z/__MACOSX/._pkg \
+    && (cd z && zip -qr ../pkg.zip pkg __MACOSX) && rm -r z)
+run -f pkg.zip
+dest="$(find "$T" -mindepth 2 -maxdepth 2 -type d -name pkg)"
+case "$dest" in "$T"/scry.*/pkg) ok ;; *) bad "zip -f extracts into a folder named pkg" "$(find "$T")" ;; esac
+if [ -e "$dest/__MACOSX" ]; then bad "zip -f drops __MACOSX" "$(find "$T")"; else ok; fi
+expect_called "open -R -- $dest/pkg/plain.txt" "and opens the lone folder left"
+rm -rf "${T:?}"/*
 
 # --- previews never open anything ---
 run -p doc.pdf song.ogg clip.mp4 notes.md
@@ -247,6 +257,10 @@ printf 'scry_register w "xx" "w"\nscry_view_w() { :; }\nscry_preview_w() { scry_
     > "$WORK/handlers/mine.sh"
 run -p a.xx;            expect_silent open "a preview that asks for a window opens none"
 expect_out "a.xx" "and shows the summary"
+# Handlers written before scry_full_* chose their -f variant themselves.
+printf 'scry_register old "xx" "old"\nscry_view_old() { echo "VIEW FW=$FORCE_WINDOW"; }\n' \
+    > "$WORK/handlers/mine.sh"
+run -f a.xx;            expect_out "VIEW FW=1" "-f without scry_full_* views, with \$FORCE_WINDOW still set"
 rm -rf "$WORK/handlers"
 
 # ===== Linux platform layer =====

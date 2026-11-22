@@ -165,8 +165,11 @@ view_one() {
         file="$SCRY_TMP/$name"
         SCRY_PATH="$file"
     fi
+    # -f picks the handler's full variant; one with none is shown normally.
     if [ "$SCRY_PREVIEW" = "1" ]; then
         scry_preview_file "$handler" "$file"
+    elif [ "$FORCE_WINDOW" = "1" ] && declare -F "scry_full_$handler" >/dev/null; then
+        "scry_full_$handler" "$file"
     else
         "scry_view_$handler" "$file"
     fi

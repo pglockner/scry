@@ -11,6 +11,10 @@ scry_view_image() {
     scry_show_image "$1"
 }
 
+scry_full_image() {
+    scry_window "$1"
+}
+
 scry_preview_image() {
     scry_preview_image_file "$1"
 }

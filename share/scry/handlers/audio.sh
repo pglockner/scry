@@ -4,21 +4,20 @@ scry_register audio "mp3 m4a wav aiff aif aac flac caf ogg oga opus" \
 scry_helper mpv "audio playback with progress, album-art window (-f), ogg/opus, more video" \
     "$SCRY_INSTALL mpv"
 
+# Prefer mpv when installed: it shows a progress line and takes seek/pause
+# keys. Otherwise the platform's player, which is silent.
 scry_view_audio() {
-    local file="$1"
-    if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_require mpv
-        # mpv's defaults: a window showing embedded album art, if any.
-        mpv -- "$file"
-        return
-    fi
-    # Prefer mpv when installed: it shows a progress line and takes
-    # seek/pause keys. Otherwise the platform's player, which is silent.
     if command -v mpv >/dev/null 2>&1; then
-        mpv --no-video -- "$file"
+        mpv --no-video -- "$1"
     else
-        scry_play_audio "$file"
+        scry_play_audio "$1"
     fi
+}
+
+# mpv's defaults: a window showing embedded album art, if any.
+scry_full_audio() {
+    scry_require mpv
+    mpv -- "$1"
 }
 
 # Never play sound from a preview; show the file's own metadata instead.
