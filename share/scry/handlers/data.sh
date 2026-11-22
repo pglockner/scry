@@ -3,7 +3,7 @@ scry_register data "csv tsv psv" "visidata (vd)"
 scry_helper vd "csv/tsv/psv" "$SCRY_INSTALL visidata"
 
 scry_view_data() {
-    scry_require vd "$SCRY_INSTALL visidata"
+    scry_require vd
     vd "$1"
 }
 

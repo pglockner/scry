@@ -98,13 +98,19 @@ scry_find_handler() {
     return 1
 }
 
-# scry_require BIN HINT -- exit with an install hint if BIN is missing.
+# scry_require BIN [HINT] -- exit with an install hint if BIN is missing.
+# The hint is HINT if given, else the one BIN was declared with by
+# scry_helper, else "$SCRY_INSTALL BIN".
 scry_require() {
-    local bin="$1" hint="$2"
-    if ! command -v "$bin" >/dev/null 2>&1; then
-        echo "scry: '$bin' not found. $hint" >&2
-        exit 1
+    local bin="$1" hint="${2:-}" i
+    command -v "$bin" >/dev/null 2>&1 && return 0
+    if [ -z "$hint" ]; then
+        for ((i = 0; i < ${#SCRY_HELPERS[@]}; i++)); do
+            [ "${SCRY_HELPERS[$i]}" = "$bin" ] && hint="${SCRY_HELPER_HINTS[$i]}"
+        done
     fi
+    echo "scry: '$bin' not found. ${hint:-$SCRY_INSTALL $bin}" >&2
+    exit 1
 }
 
 # Real terminal width, or empty if there's no controlling terminal. Passed
@@ -237,7 +243,7 @@ scry_show_image() {
     if [ "${TERM_PROGRAM:-}" = "iTerm.app" ] && command -v imgcat >/dev/null 2>&1; then
         imgcat "$file"
     else
-        scry_require viu "${SCRY_HINT_VIU:-$SCRY_INSTALL viu}"
+        scry_require viu
         # viu asks the terminal whether it speaks the kitty graphics
         # protocol. Ghostty's reply arrives with echo still on, so it's
         # printed over the command line; turn echo off while viu runs.
@@ -271,7 +277,7 @@ scry_info() {
 scry_preview_image_file() {
     local w
     w="$(scry_term_width)"
-    scry_require viu "${SCRY_HINT_VIU:-$SCRY_INSTALL viu}"
+    scry_require viu
     if [ -n "$w" ]; then
         viu -b -w "$w" "$1"
     else

@@ -69,7 +69,7 @@ scry_platform_open() {
         echo "scry: no graphical session to open '$what' in (try: scry -p '$what')" >&2
         exit 1
     fi
-    scry_require "$SCRY_OPENER" "$SCRY_INSTALL $SCRY_OPENER_PKG"
+    scry_require "$SCRY_OPENER"
     # Backgrounded: without a desktop environment, xdg-open can run the app
     # in the foreground and wait for it. The APP argument names a macOS app,
     # so it's ignored; the file opens in the user's default app for its type.
@@ -107,7 +107,7 @@ scry_doc_to_text() {
             antiword "$1"
             ;;
         *)
-            scry_require pandoc "$SCRY_INSTALL pandoc"
+            scry_require pandoc
             pandoc --to=plain --wrap=none "$1"
             ;;
     esac
@@ -139,7 +139,7 @@ scry_play_audio() {
     if command -v ffplay >/dev/null 2>&1; then
         ffplay -nodisp -autoexit -loglevel error "$1"
     else
-        scry_require mpv "$SCRY_INSTALL mpv"
+        scry_require mpv
     fi
 }
 

@@ -230,6 +230,9 @@ run a.xx notes.md
 expect_rc 1 "a failing command fails the handler"
 case "$out" in *"KEPT GOING"*) bad "set -e holds inside handlers" "$out" ;; *) ok ;; esac
 expect_out "# hi" "and the next file is still shown"
+printf 'scry_register j "xx" "j"\nscry_helper jq "json" "get jq from jq.dev"\nscry_view_j() { scry_require jq; }\n' \
+    > "$WORK/handlers/mine.sh"
+run a.xx;               expect_out "'jq' not found. get jq from jq.dev" "scry_require without a hint uses the declared one"
 rm -rf "$WORK/handlers"
 
 # ===== Linux platform layer =====
@@ -245,6 +248,7 @@ run --doctor
 expect_out "scry helpers (linux)" "doctor names the platform"
 expect_out "ok       batcat" "doctor checks batcat"
 expect_out "ok       xdg-open" "doctor checks the Linux helpers"
+expect_out "ok       unzip" "doctor checks unzip, which minimal images lack"
 rm "$STUBS/pandoc"
 run --doctor;           expect_out "install: sudo apt install pandoc" "hints use the distro's package manager"
 stub pandoc

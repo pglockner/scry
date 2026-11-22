@@ -330,13 +330,13 @@ scry_register json "json jsonl" "jq, pretty-printed"
 scry_helper jq "json" "$SCRY_INSTALL jq"
 
 scry_view_json() {
-    scry_require jq "$SCRY_INSTALL jq"
+    scry_require jq
     jq -C . "$1" | less -R
 }
 
 # Optional: what fzf shows. No pager here, and cap the length.
 scry_preview_json() {
-    scry_require jq "$SCRY_INSTALL jq"
+    scry_require jq
     jq -C . "$1" | head -n 200
 }
 ```
@@ -348,8 +348,8 @@ What's available to handlers:
 | Function / variable                     | Purpose                                                        |
 | --------------------------------------- | -------------------------------------------------------------- |
 | `scry_register NAME "EXTS" "HELP"`      | Claim extensions (space-separated, no dot, `tar.gz` is fine)   |
-| `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
-| `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
+| `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`, and give its install hint     |
+| `scry_require BIN ["HINT"]`             | Exit if `BIN` is missing, with HINT or its `scry_helper` hint  |
 | `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
 | `scry_edit_NAME`, `scry_edit_text FILE` | Optional handler function run under `-e`; the helper opens FILE in `$VISUAL`/`$EDITOR` |
 | `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |

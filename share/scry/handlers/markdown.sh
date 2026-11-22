@@ -11,7 +11,7 @@ scry_view_markdown() {
         scry_markdown_window "$file"
         return
     fi
-    scry_require glow "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
+    scry_require glow
     w="$(scry_term_width)"
     [ -n "$w" ] && args+=(-w "$w")
     if [ -t 0 ]; then
@@ -25,7 +25,7 @@ scry_view_markdown() {
 # The file always goes in on stdin, so it doesn't matter what stdin was.
 scry_preview_markdown() {
     local w args=(-s "${GLAMOUR_STYLE:-dark}")
-    scry_require glow "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
+    scry_require glow
     w="$(scry_term_width)"
     [ -n "$w" ] && args+=(-w "$w")
     glow "${args[@]}" - < "$1"

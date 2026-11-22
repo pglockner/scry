@@ -21,7 +21,7 @@
 # with bash 3.2.
 
 SCRY_INSTALL="brew install"
-SCRY_DOCTOR_NOTE="Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, afinfo, mdls, open"
+SCRY_DOCTOR_NOTE="Bundled with macOS (not checked): qlmanage, textutil, tar, afplay, afinfo, mdls, open"
 SCRY_WINDOW_DESC="Quick Look window"
 SCRY_MARKDOWN_DESC="Quick Look window"
 SCRY_FOLDER_DESC="Finder"

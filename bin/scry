@@ -202,7 +202,7 @@ view() {
 # selection (Tab to multi-select). Flags given with --fzf carry over.
 fzf_pick() {
     local dir="${1:-.}" preview selection file
-    scry_require fzf "$SCRY_INSTALL fzf"
+    scry_require fzf
     preview="$(printf '%q' "$SCRY_SELF") --preview"
     [ "$SCRY_RAW" = "1" ] && preview="$preview -A"
     [ -n "$SCRY_TYPE" ] && preview="$preview -t $(printf '%q' "$SCRY_TYPE")"
