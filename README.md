@@ -187,8 +187,10 @@ window (`qlmanage -p`). Two macOS quirks:
   (`./install.sh --with quicklook`, which also registers it). macOS asks you
   to approve the extension the first time it's used.
 
-Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
-since a window would open on the remote machine's screen. scry only guesses
+Over ssh, nothing opens a window, since it would open on the remote machine's
+screen. `-f` is ignored with a note, and a file whose normal view is a window
+(a PDF, a video, a document under `-e`) shows its preview in the terminal
+instead, with a note saying why. scry only guesses
 from ssh's environment variables, so a shell that has none (a herdr or tmux
 server you attach to from another machine) needs `export SCRY_REMOTE=1`; use
 `SCRY_REMOTE=0` to allow windows over ssh, e.g. with a forwarded display.
@@ -267,7 +269,7 @@ It needs fzf (`./install.sh --with fzf`).
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
-| `SCRY_REMOTE`           | `1`: treat this shell as remote (`-f` is ignored); `0`: as local. Unset: guess from ssh |
+| `SCRY_REMOTE`           | `1`: treat this shell as remote (no windows open); `0`: as local. Unset: guess from ssh |
 | `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 
@@ -295,12 +297,11 @@ browser. One catch on Ubuntu, where Firefox is a snap: snaps have their own
 your home, e.g. `export TMPDIR="$HOME/tmp"` (the folder must exist), or use a
 browser that isn't a snap.
 
-Without a graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example
-over ssh, those views are an error that suggests `scry -p` instead. Videos
-still go to mpv, which can sometimes play without a desktop (on a Linux
-console, say); when it can't, scry says why and suggests `mpv --vo=tct` to play
-the video as text in the terminal. Everything that renders in the terminal
-works the same everywhere.
+Without a graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), on a Linux
+console say, it works as over ssh: `-f` is ignored, and PDFs and videos show
+their preview in the terminal. For a video, the note suggests `mpv --vo=tct`,
+which plays it as text in the terminal. Everything that renders in the
+terminal works the same everywhere.
 
 To install the Linux helpers, see [Install](#install): `./install.sh` picks
 the packages for your distro.
@@ -379,6 +380,11 @@ Handlers stay portable by calling the platform layer instead of OS tools:
 `scry_window`. They're defined for each OS in
 [`share/scry/platform/`](share/scry/platform); the header of `darwin.sh`
 documents them.
+
+Anything that opens a window (`scry_open`, `scry_window`, `scry_play_video`)
+first checks that one may open here. In a preview, over ssh, or without a
+graphical session, it shows the file's preview instead and ends the view, so a
+handler never needs to check for those cases itself.
 
 Handler names must be unique (registering the same name twice is an error).
 Handlers are sourced into scry's shell, so like a `.zshrc`, only put code there

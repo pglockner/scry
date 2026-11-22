@@ -28,10 +28,12 @@ SCRY_EDIT=0
 
 # Per-file state. Each file is viewed in its own subshell, so these start
 # fresh for every file and scry_cleanup runs when that file's view ends.
-# shellcheck disable=SC2034  # read by platform/linux.sh
+# Set by bin/scry for each file, before its handler runs.
 SCRY_FILE=""       # the file being viewed, as given; for messages
 SCRY_TMP=""        # private temp dir for this file, made by scry_tmp
 SCRY_DETACHED=0    # 1 once a window outlives scry (Quick Look, open)
+SCRY_PATH=""       # the path the handler gets (./-name, spooled stdin)
+SCRY_HANDLER=""    # the handler that claims it, or empty
 
 # Debian and Ubuntu install bat as batcat.
 SCRY_BAT=bat
@@ -209,13 +211,85 @@ scry_cleanup() {
     fi
 }
 
+# --- Windows ---
+# Everything scry shows outside the terminal (an app, a Quick Look window, a
+# video player) goes through the four functions below. Each first checks
+# whether a window may open here at all, so no handler has to know about
+# ssh, previews or a missing display: where none may, the file's preview is
+# shown in the terminal instead. The platform layer does the opening.
+
+# scry_no_window -- print why no window may open here and succeed, or fail
+# (printing nothing) if one may.
+scry_no_window() {
+    if [ "$SCRY_PREVIEW" = "1" ]; then
+        echo "this is a preview"
+    elif scry_is_remote; then
+        echo "this looks like a remote session (SCRY_REMOTE=0 to override)"
+    elif ! scry_platform_has_display; then
+        echo "there's no graphical session"
+    else
+        return 1
+    fi
+}
+
+# scry_preview_file HANDLER FILE -- show FILE the way --preview does: its
+# handler's scry_preview_*, else a short summary. HANDLER may be empty.
+scry_preview_file() {
+    if [ -n "$1" ] && declare -F "scry_preview_$1" >/dev/null; then
+        "scry_preview_$1" "$2"
+    else
+        scry_info "$2"
+    fi
+}
+
+# scry_need_window [TIP] -- return if a window may open here. Otherwise show
+# the file being viewed as its preview, say why (and TIP) on stderr, and end
+# this file's view successfully. A preview that asks for a window gets just
+# the summary, since its own preview would ask again.
+scry_need_window() {
+    local why what="$SCRY_FILE"
+    why="$(scry_no_window)" || return 0
+    if [ "$SCRY_PREVIEW" = "1" ]; then
+        scry_info "$SCRY_PATH"
+        exit 0
+    fi
+    [ "$what" != - ] || what=stdin
+    echo "scry: no window for '$what': $why. Showing its preview." >&2
+    [ -z "${1:-}" ] || echo "scry: $1" >&2
+    scry_preview_file "$SCRY_HANDLER" "$SCRY_PATH"
+    exit 0
+}
+
 # scry_open FILE [APP] -- open FILE in its app (on macOS, optionally in
 # APP; elsewhere APP is ignored and the default app opens it). The app
-# outlives scry, so once it's launched, the file's temp dir is kept. If it
-# can't be (no graphical session, say), the temp dir is cleaned up as usual.
+# outlives scry, so once it's launched, the file's temp dir is kept.
 scry_open() {
+    scry_need_window
     scry_platform_open "$@"
     SCRY_DETACHED=1
+}
+
+# scry_window FILE -- a quick viewing window for FILE: Quick Look on macOS,
+# the default app elsewhere. Like scry_open, it keeps the temp dir.
+scry_window() {
+    scry_need_window
+    scry_platform_window "$1"
+    SCRY_DETACHED=1
+}
+
+# scry_markdown_window FILE -- FILE's markdown, rendered, in a window.
+scry_markdown_window() {
+    scry_need_window
+    scry_platform_markdown_window "$1"
+}
+
+# scry_play_video FILE -- play a video in a player window.
+scry_play_video() {
+    local tip=""
+    command -v mpv >/dev/null 2>&1 \
+        && tip="to play it as text in the terminal: mpv --vo=tct '$SCRY_FILE'"
+    scry_need_window "$tip"
+    scry_platform_play_video "$1"
 }
 
 # scry_open_extracted DIR -- open DIR, an archive's extracted contents, in
