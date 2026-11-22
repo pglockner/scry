@@ -142,6 +142,16 @@ expect_out "-f ignored" "-f over ssh says so"
 SSH="1.2.3.4 5 6.7.8.9 22" REMOTE=0 run -f notes.md; expect_called "qlmanage -p notes.md" "SCRY_REMOTE=0 allows windows over ssh"
 REMOTE=1 run -f notes.md;  expect_silent qlmanage "SCRY_REMOTE=1 marks a shell with no ssh variables remote"
 SSH="1.2.3.4 5 6.7.8.9 22" run notes.md;             expect_silent qlmanage "ssh without -f is untouched"
+# A file whose normal view is a window shows its preview instead.
+SSH="1.2.3.4 5 6.7.8.9 22" run doc.pdf
+expect_rc 0 "pdf over ssh succeeds"; expect_silent qlmanage "pdf over ssh opens no Quick Look"
+expect_out "no window for 'doc.pdf': this looks like a remote session" "pdf over ssh says why"
+expect_out "doc.pdf" "pdf over ssh shows its summary"
+SSH="1.2.3.4 5 6.7.8.9 22" run -f doc.pdf
+expect_silent qlmanage "-f pdf over ssh opens no Quick Look"; expect_silent open "-f pdf over ssh opens no Preview"
+SSH="1.2.3.4 5 6.7.8.9 22" run clip.mp4;             expect_silent open "mp4 over ssh opens no QuickTime"
+SSH="1.2.3.4 5 6.7.8.9 22" run -e report.docx
+expect_silent open "-e docx over ssh opens no app"; expect_called "textutil" "-e docx over ssh shows the text"
 
 # --- -e: edit where it's easy, else view ---
 run -e notes.md;        expect_called "myed notes.md" "-e markdown -> editor"
@@ -208,6 +218,16 @@ run -f hollow.tar
 dest="$(find "$T" -mindepth 3 -maxdepth 3 -type d -name hollow)"
 expect_called "open -- $dest" "an empty folder just opens in Finder"
 rm -rf "${T:?}"/*
+# A zip from macOS's Compress: one folder plus __MACOSX clutter, which is
+# dropped before looking for a lone folder.
+(cd "$F" && mkdir -p z/pkg z/__MACOSX && cp plain.txt z/pkg/ && : > z/__MACOSX/._pkg \
+    && (cd z && zip -qr ../pkg.zip pkg __MACOSX) && rm -r z)
+run -f pkg.zip
+dest="$(find "$T" -mindepth 2 -maxdepth 2 -type d -name pkg)"
+case "$dest" in "$T"/scry.*/pkg) ok ;; *) bad "zip -f extracts into a folder named pkg" "$(find "$T")" ;; esac
+if [ -e "$dest/__MACOSX" ]; then bad "zip -f drops __MACOSX" "$(find "$T")"; else ok; fi
+expect_called "open -R -- $dest/pkg/plain.txt" "and opens the lone folder left"
+rm -rf "${T:?}"/*
 
 # --- previews never open anything ---
 run -p doc.pdf song.ogg clip.mp4 notes.md
@@ -230,6 +250,20 @@ run a.xx notes.md
 expect_rc 1 "a failing command fails the handler"
 case "$out" in *"KEPT GOING"*) bad "set -e holds inside handlers" "$out" ;; *) ok ;; esac
 expect_out "# hi" "and the next file is still shown"
+printf 'scry_register j "xx" "j"\nscry_helper jq "json" "get jq from jq.dev"\nscry_view_j() { scry_require jq; }\n' \
+    > "$WORK/handlers/mine.sh"
+run a.xx;               expect_out "'jq' not found. get jq from jq.dev" "scry_require without a hint uses the declared one"
+printf 'scry_register w "xx" "w"\nscry_view_w() { scry_open "$1"; }\nscry_preview_w() { scry_open "$1"; }\n' \
+    > "$WORK/handlers/mine.sh"
+run -p a.xx;            expect_silent open "a preview that asks for a window opens none"
+expect_out "a.xx" "and shows the summary"
+# Over ssh the view falls back to that preview, which mustn't fall back again.
+SSH="1.2.3.4 5 6.7.8.9 22" run a.xx
+expect_rc 0 "a window-only view and preview over ssh end"; expect_out "a.xx" "with the summary"
+# Handlers written before scry_full_* chose their -f variant themselves.
+printf 'scry_register old "xx" "old"\nscry_view_old() { echo "VIEW FW=$FORCE_WINDOW"; }\n' \
+    > "$WORK/handlers/mine.sh"
+run -f a.xx;            expect_out "VIEW FW=1" "-f without scry_full_* views, with \$FORCE_WINDOW still set"
 rm -rf "$WORK/handlers"
 
 # ===== Linux platform layer =====
@@ -245,6 +279,7 @@ run --doctor
 expect_out "scry helpers (linux)" "doctor names the platform"
 expect_out "ok       batcat" "doctor checks batcat"
 expect_out "ok       xdg-open" "doctor checks the Linux helpers"
+expect_out "ok       unzip" "doctor checks unzip, which minimal images lack"
 rm "$STUBS/pandoc"
 run --doctor;           expect_out "install: sudo apt install pandoc" "hints use the distro's package manager"
 stub pandoc
@@ -278,13 +313,15 @@ dest="$(find "$T" -mindepth 2 -maxdepth 2 -type d)"
 expect_called "xdg-open $dest" "tar -f opens the extracted folder"
 if [ -f "$dest/plain.txt" ]; then ok; else bad "tar -f extracts the files" "$(find "$T")"; fi
 rm -rf "${T:?}"/*
-DISP="" run -f a.tar.gz
-expect_rc 1 "no graphical session: -f on an archive fails"
-expect_out "no graphical session to open 'a.tar.gz' in" "the error names the archive, not its temp dir"
-expect_tmp 0 "and its extracted files are cleaned up, since nothing opened them"
+# --- no graphical session: like ssh, nothing opens a window ---
+DISP="" run -f notes.md
+expect_rc 0 "no graphical session: -f still succeeds"
+expect_out "-f ignored: there's no graphical session" "and says why"
+expect_called "glow -p" "and views in the terminal"; expect_silent pandoc "without rendering for a window"
 DISP="" run doc.pdf
-expect_rc 1 "no graphical session is an error"
-expect_out "no graphical session to open 'doc.pdf' in (try: scry -p 'doc.pdf')" "and says what to do"
+expect_rc 0 "no graphical session: a pdf still succeeds"
+expect_out "no window for 'doc.pdf': there's no graphical session" "and says why"
+expect_out "3 pages" "with its preview"
 expect_silent xdg-open "nothing is opened without a session"
 stub wslview
 DISP="" run doc.pdf;    expect_called "wslview doc.pdf" "WSL: wslview opens files, no DISPLAY needed"
@@ -296,15 +333,9 @@ run old.doc;            expect_called "antiword old.doc" "doc -> antiword"
 run clip.mp4;           expect_called "mpv -- clip.mp4" "video -> mpv"
 run song.ogg;           expect_called "mpv --no-video -- song.ogg" "audio -> mpv"
 DISP="" run clip.mp4
-expect_called "mpv -- clip.mp4" "no graphical session: mpv still gets to try"
-case "$out" in *"no graphical session"*) bad "no message when mpv manages" "$out" ;; *) ok ;; esac
-stub mpv 'exit 2'   # mpv's "Errors when loading file", as when it has no window
-DISP="" run clip.mp4
-expect_rc 1 "no graphical session: mpv failing fails the view"
-expect_out "no graphical session to play 'clip.mp4' in" "and scry says why"
+expect_silent mpv "no graphical session: video doesn't start a player"
+expect_out "codec_name=h264" "and shows its preview"
 expect_out "mpv --vo=tct 'clip.mp4'" "and offers terminal playback"
-DISP=:0 run clip.mp4
-case "$out" in *"no graphical session"*) bad "no headless message with a display" "$out" ;; *) ok ;; esac
 rm "$STUBS/mpv"
 run clip.mp4;           expect_called "xdg-open clip.mp4" "video without mpv -> default app"
 run song.ogg;           expect_called "ffplay -nodisp -autoexit -loglevel error song.ogg" "audio without mpv -> ffplay"

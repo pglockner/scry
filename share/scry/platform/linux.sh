@@ -58,18 +58,12 @@ fi
 
 # X11 or Wayland, for windows of our own and xdg-open's apps. (WSLg sets
 # these too; wslview needs neither, since Windows shows its windows.)
-scry_has_display() {
-    [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
+scry_platform_has_display() {
+    [ "$SCRY_OPENER" = wslview ] || [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]
 }
 
 scry_platform_open() {
-    # Name the file the user asked for, not a temp file made from it.
-    local what="${SCRY_FILE:-$1}"
-    if [ "$SCRY_OPENER" = xdg-open ] && ! scry_has_display; then
-        echo "scry: no graphical session to open '$what' in (try: scry -p '$what')" >&2
-        exit 1
-    fi
-    scry_require "$SCRY_OPENER" "$SCRY_INSTALL $SCRY_OPENER_PKG"
+    scry_require "$SCRY_OPENER"
     # Backgrounded: without a desktop environment, xdg-open can run the app
     # in the foreground and wait for it. The APP argument names a macOS app,
     # so it's ignored; the file opens in the user's default app for its type.
@@ -77,15 +71,15 @@ scry_platform_open() {
 }
 
 # No Quick Look here; the default app is the closest thing.
-scry_window() {
-    scry_open "$1"
+scry_platform_window() {
+    scry_platform_open "$1"
 }
 
 # Desktops tend to give .md files to a text editor or LibreOffice, which
 # show the source. Render it instead: pandoc turns GitHub-flavored markdown
 # into a standalone HTML page, with its images embedded (they're looked up
 # next to the markdown file), and the browser shows that.
-scry_markdown_window() {
+scry_platform_markdown_window() {
     local html embed=--self-contained
     scry_require pandoc "$SCRY_INSTALL pandoc  (renders markdown for -f)"
     # --self-contained became --embed-resources in pandoc 2.19; newer ones
@@ -107,7 +101,7 @@ scry_doc_to_text() {
             antiword "$1"
             ;;
         *)
-            scry_require pandoc "$SCRY_INSTALL pandoc"
+            scry_require pandoc
             pandoc --to=plain --wrap=none "$1"
             ;;
     esac
@@ -139,25 +133,17 @@ scry_play_audio() {
     if command -v ffplay >/dev/null 2>&1; then
         ffplay -nodisp -autoexit -loglevel error "$1"
     else
-        scry_require mpv "$SCRY_INSTALL mpv"
+        scry_require mpv
     fi
 }
 
-# Without X11 or Wayland, mpv may still manage (on a Linux console it can
-# draw with drm), so let it try; if it can't play the file (exit 2), add
-# what its own errors don't say. Without mpv, scry_open explains instead.
-scry_play_video() {
-    local what="${SCRY_FILE:-$1}" rc=0
-    if ! command -v mpv >/dev/null 2>&1; then
+# mpv, else the file's default app.
+scry_platform_play_video() {
+    if command -v mpv >/dev/null 2>&1; then
+        mpv -- "$1"
+    else
         scry_open "$1"
-        return
     fi
-    mpv -- "$1" || rc=$?
-    if [ "$rc" -eq 2 ] && ! scry_has_display; then
-        echo "scry: no graphical session to play '$what' in (try: scry -p '$what'," \
-            "or mpv --vo=tct '$what' to play it as text in the terminal)" >&2
-    fi
-    return "$rc"
 }
 
 scry_platform_helpers() {

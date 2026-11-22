@@ -6,22 +6,27 @@
 #   SCRY_DOCTOR_NOTE         extra line for `scry --doctor`, or empty
 #   SCRY_*_DESC              what this platform uses, for `scry -h`
 #   SCRY_HINT_GLOW, _VIU     optional: hints for when SCRY_INSTALL can't get them
-#   scry_platform_open FILE [APP]  open FILE in its app (or in APP); detached
-#   scry_window FILE         a quick viewing window for FILE; detached
-#   scry_markdown_window FILE  FILE's markdown, rendered, in a window
 #   scry_doc_to_text FILE    print an rtf/doc/docx/odt file as plain text
 #   scry_pdf_pages FILE      print the page count, or nothing if unknown
 #   scry_audio_info FILE     print a few lines about an audio file (may be empty)
 #   scry_video_info FILE     the same for a video file
 #   scry_play_audio FILE     play audio when mpv isn't installed
-#   scry_play_video FILE     play a video
 #   scry_platform_helpers    declare this platform's helpers for --doctor
 #
-# Handlers call these instead of any OS-specific tool. Must stay compatible
-# with bash 3.2.
+# Handlers call these instead of any OS-specific tool. Windows are opened
+# for lib.sh's scry_open, scry_window, scry_markdown_window and
+# scry_play_video, which first check that one may open here at all:
+#
+#   scry_platform_has_display        succeed if there's a screen for windows
+#   scry_platform_open FILE [APP]    open FILE in its app (or in APP); detached
+#   scry_platform_window FILE        a quick viewing window for FILE; detached
+#   scry_platform_markdown_window FILE  FILE's markdown, rendered, in a window
+#   scry_platform_play_video FILE    play a video
+#
+# Must stay compatible with bash 3.2.
 
 SCRY_INSTALL="brew install"
-SCRY_DOCTOR_NOTE="Bundled with macOS (not checked): qlmanage, textutil, unzip, tar, afplay, afinfo, mdls, open"
+SCRY_DOCTOR_NOTE="Bundled with macOS (not checked): qlmanage, textutil, tar, afplay, afinfo, mdls, open"
 SCRY_WINDOW_DESC="Quick Look window"
 SCRY_MARKDOWN_DESC="Quick Look window"
 SCRY_FOLDER_DESC="Finder"
@@ -32,6 +37,11 @@ SCRY_DOC_DESC="textutil, as plain text"
 
 # Everything used here ships with macOS; SCRY_DOCTOR_NOTE lists it instead.
 scry_platform_helpers() {
+    :
+}
+
+# A Mac's own session always has its screen; ssh is caught by scry_is_remote.
+scry_platform_has_display() {
     :
 }
 
@@ -62,9 +72,8 @@ scry_platform_open() {
 # launched from a background process -- it can open behind the focused
 # window. Poll for the process and bring it forward; silently does nothing
 # without Accessibility permission granted to the terminal app.
-scry_window() {
+scry_platform_window() {
     scry_require qlmanage "qlmanage ships with macOS; this shouldn't happen"
-    SCRY_DETACHED=1
     qlmanage -p "$1" >/dev/null 2>&1 &
     osascript -e '
         tell application "System Events"
@@ -80,7 +89,7 @@ scry_window() {
 }
 
 # Rendered by the QLMarkdown extension (./install.sh --with quicklook).
-scry_markdown_window() {
+scry_platform_markdown_window() {
     scry_window "$1"
 }
 
@@ -118,7 +127,7 @@ scry_play_audio() {
 }
 
 # QuickTime for what it plays, mpv for the rest.
-scry_play_video() {
+scry_platform_play_video() {
     case "$(scry_lower "$1")" in
         *.mp4|*.mov|*.m4v) scry_open "$1" "QuickTime Player" ;;
         *)

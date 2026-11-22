@@ -187,8 +187,10 @@ window (`qlmanage -p`). Two macOS quirks:
   (`./install.sh --with quicklook`, which also registers it). macOS asks you
   to approve the extension the first time it's used.
 
-Over ssh, `-f` is ignored with a note and the file is shown in the terminal,
-since a window would open on the remote machine's screen. scry only guesses
+Over ssh, nothing opens a window, since it would open on the remote machine's
+screen. `-f` is ignored with a note, and a file whose normal view is a window
+(a PDF, a video, a document under `-e`) shows its preview in the terminal
+instead, with a note saying why. scry only guesses
 from ssh's environment variables, so a shell that has none (a herdr or tmux
 server you attach to from another machine) needs `export SCRY_REMOTE=1`; use
 `SCRY_REMOTE=0` to allow windows over ssh, e.g. with a forwarded display.
@@ -267,7 +269,7 @@ It needs fzf (`./install.sh --with fzf`).
 | `SCRY_DEBUG=1`          | Print the detected terminal width to stderr                      |
 | `SCRY_USER_HANDLERS`    | Directory to load your own handlers from (see below)             |
 | `SCRY_SHARE`            | Where to find `lib.sh` and the built-in handlers (rarely needed) |
-| `SCRY_REMOTE`           | `1`: treat this shell as remote (`-f` is ignored); `0`: as local. Unset: guess from ssh |
+| `SCRY_REMOTE`           | `1`: treat this shell as remote (no windows open); `0`: as local. Unset: guess from ssh |
 | `SCRY_PLATFORM`         | `darwin` or `linux`: override which platform layer loads         |
 | `GLAMOUR_STYLE`         | Markdown style for previews (default `dark`)                     |
 
@@ -295,12 +297,11 @@ browser. One catch on Ubuntu, where Firefox is a snap: snaps have their own
 your home, e.g. `export TMPDIR="$HOME/tmp"` (the folder must exist), or use a
 browser that isn't a snap.
 
-Without a graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), for example
-over ssh, those views are an error that suggests `scry -p` instead. Videos
-still go to mpv, which can sometimes play without a desktop (on a Linux
-console, say); when it can't, scry says why and suggests `mpv --vo=tct` to play
-the video as text in the terminal. Everything that renders in the terminal
-works the same everywhere.
+Without a graphical session (`$DISPLAY` or `$WAYLAND_DISPLAY`), on a Linux
+console say, it works as over ssh: `-f` is ignored, and PDFs and videos show
+their preview in the terminal. For a video, the note suggests `mpv --vo=tct`,
+which plays it as text in the terminal. Everything that renders in the
+terminal works the same everywhere.
 
 To install the Linux helpers, see [Install](#install): `./install.sh` picks
 the packages for your distro.
@@ -319,10 +320,16 @@ wherever `SCRY_USER_HANDLERS` points). Any `*.sh` file there is loaded after
 the built-ins, so a handler that claims an extension already taken wins.
 
 A handler declares itself, optionally lists the helper program it needs, and
-defines one function, `scry_view_<name>`, which receives the file path. It can
-also define `scry_preview_<name>` for `--preview`; without one, previews of
-that type show a short summary, so a handler is never run interactively inside
-a preview pane by accident.
+defines one function, `scry_view_<name>`, which receives the file path. Each
+of scry's modes has an optional function of its own, which scry calls in
+place of the view when it's defined:
+
+- `scry_full_<name>` for `-f`, the full variant. Without one, `-f` shows the
+  normal view.
+- `scry_preview_<name>` for `--preview`. Without one, previews of that type
+  show a short summary, so a handler is never run interactively inside a
+  preview pane by accident.
+- `scry_edit_<name>` for `-e`. Without one, `-e` shows the normal view.
 
 ```bash
 # ~/.config/scry/handlers/json.sh
@@ -330,13 +337,13 @@ scry_register json "json jsonl" "jq, pretty-printed"
 scry_helper jq "json" "$SCRY_INSTALL jq"
 
 scry_view_json() {
-    scry_require jq "$SCRY_INSTALL jq"
+    scry_require jq
     jq -C . "$1" | less -R
 }
 
 # Optional: what fzf shows. No pager here, and cap the length.
 scry_preview_json() {
-    scry_require jq "$SCRY_INSTALL jq"
+    scry_require jq
     jq -C . "$1" | head -n 200
 }
 ```
@@ -348,17 +355,16 @@ What's available to handlers:
 | Function / variable                     | Purpose                                                        |
 | --------------------------------------- | -------------------------------------------------------------- |
 | `scry_register NAME "EXTS" "HELP"`      | Claim extensions (space-separated, no dot, `tar.gz` is fine)   |
-| `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`                                |
-| `scry_require BIN "HINT"`               | Exit with an install hint if `BIN` is missing                  |
+| `scry_helper BIN "ENABLES" "HINT"`      | Have `--doctor` check for `BIN`, and give its install hint     |
+| `scry_require BIN ["HINT"]`             | Exit if `BIN` is missing, with HINT or its `scry_helper` hint  |
 | `$SCRY_INSTALL`                         | This system's install command (`brew install`, `sudo apt install`, ...) |
-| `scry_edit_NAME`, `scry_edit_text FILE` | Optional handler function run under `-e`; the helper opens FILE in `$VISUAL`/`$EDITOR` |
-| `$FORCE_WINDOW`                         | `1` under `scry -f`; use it to pick a "full" variant           |
+| `scry_edit_text FILE`                   | Open FILE in `$VISUAL`/`$EDITOR`, for a `scry_edit_NAME`       |
 | `scry_tmp`, then `$SCRY_TMP`            | A private temp dir for this file, removed after its view       |
-| `scry_open_extracted DIR`               | Open extracted files; a lone top-level folder opens directly   |
+| `scry_open_archive FILE EXTRACT`        | Extract FILE with `EXTRACT FILE DIR` and open the contents in the file manager |
 | `scry_open FILE [APP]`                  | Open FILE in its app (on macOS, in APP if given), keeping `$SCRY_TMP` for it |
 | `scry_window FILE`                      | A viewing window: Quick Look on macOS, the default app on Linux |
 | `scry_info FILE`                        | Short summary (name, kind, size); a safe preview for anything  |
-| `scry_show_image FILE`                  | Show an image the way scry does                                |
+| `scry_show_image FILE`                  | Show an image in the terminal the way scry does                |
 | `scry_preview_image_file FILE`          | Show an image as block characters at the preview-pane width    |
 | `scry_bat_view ARGS...`                 | Run `bat` (or `batcat`) at the right width; honors `--preview` and `-A` |
 | `scry_term_width`                       | Print the width to render at (the fzf pane's, if previewing)   |
@@ -379,6 +385,11 @@ Handlers stay portable by calling the platform layer instead of OS tools:
 `scry_window`. They're defined for each OS in
 [`share/scry/platform/`](share/scry/platform); the header of `darwin.sh`
 documents them.
+
+Anything that opens a window (`scry_open`, `scry_window`, `scry_play_video`)
+first checks that one may open here. In a preview, over ssh, or without a
+graphical session, it shows the file's preview instead and ends the view, so a
+handler never needs to check for those cases itself.
 
 Handler names must be unique (registering the same name twice is an error).
 Handlers are sourced into scry's shell, so like a `.zshrc`, only put code there

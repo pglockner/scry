@@ -7,11 +7,7 @@ scry_helper glow "markdown" "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
 # shows a blank page. So when stdin isn't a terminal, feed it the file.
 scry_view_markdown() {
     local file="$1" w args=(-p)
-    if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_markdown_window "$file"
-        return
-    fi
-    scry_require glow "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
+    scry_require glow
     w="$(scry_term_width)"
     [ -n "$w" ] && args+=(-w "$w")
     if [ -t 0 ]; then
@@ -21,11 +17,15 @@ scry_view_markdown() {
     fi
 }
 
+scry_full_markdown() {
+    scry_markdown_window "$1"
+}
+
 # No pager, and an explicit style: glow only colors output on a tty otherwise.
 # The file always goes in on stdin, so it doesn't matter what stdin was.
 scry_preview_markdown() {
     local w args=(-s "${GLAMOUR_STYLE:-dark}")
-    scry_require glow "${SCRY_HINT_GLOW:-$SCRY_INSTALL glow}"
+    scry_require glow
     w="$(scry_term_width)"
     [ -n "$w" ] && args+=(-w "$w")
     glow "${args[@]}" - < "$1"

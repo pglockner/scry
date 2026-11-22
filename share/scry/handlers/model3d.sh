@@ -7,18 +7,29 @@ scry_helper f3d "stl/3mf/obj/ply/gltf/step" "$SCRY_INSTALL f3d"
 # scry_render_model3d FILE -- render FILE to $SCRY_TMP/model.png. f3d exits
 # 0 even on a parse failure, so success means the PNG landed.
 scry_render_model3d() {
-    scry_require f3d "$SCRY_INSTALL f3d"
+    scry_require f3d
     scry_tmp
     f3d --output="$SCRY_TMP/model.png" --resolution=1000,750 -- "$1" >/dev/null 2>&1 || true
     [ -s "$SCRY_TMP/model.png" ]
 }
 
-scry_view_model3d() {
+# scry_must_render_model3d FILE -- render FILE like scry_render_model3d,
+# or fail with an error saying so.
+scry_must_render_model3d() {
     if ! scry_render_model3d "$1"; then
         echo "scry: f3d failed to render '$1' (is it a valid 3D model?)" >&2
         return 1
     fi
+}
+
+scry_view_model3d() {
+    scry_must_render_model3d "$1"
     scry_show_image "$SCRY_TMP/model.png"
+}
+
+scry_full_model3d() {
+    scry_must_render_model3d "$1"
+    scry_window "$SCRY_TMP/model.png"
 }
 
 scry_preview_model3d() {

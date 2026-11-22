@@ -6,20 +6,19 @@ scry_register tar "tar tgz tbz tbz2 txz tar.gz tar.bz2 tar.xz" \
 # argument directly, and a literal `--` would be misparsed as the archive
 # filename itself. (scry already turned a dash-leading name into ./-name.)
 scry_view_tar() {
-    local dest
     scry_require tar "tar is part of every base system; check your PATH"
-    if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_tmp
-        dest="$SCRY_TMP/$(scry_stem "$1")"
-        mkdir "$dest"
-        tar -xf "$1" -C "$dest"
-        scry_open_extracted "$dest"
-    else
-        tar -tvf "$1"
-    fi
+    tar -tvf "$1"
 }
 
 scry_preview_tar() {
+    scry_view_tar "$1"
+}
+
+scry_extract_tar() {
+    tar -xf "$1" -C "$2"
+}
+
+scry_full_tar() {
     scry_require tar "tar is part of every base system; check your PATH"
-    tar -tvf "$1"
+    scry_open_archive "$1" scry_extract_tar
 }

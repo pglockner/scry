@@ -5,11 +5,11 @@ scry_register html "html htm xhtml" "bat, as source (-f: default browser)"
 # .html, which is the browser. A spooled stdin page stays readable after
 # scry exits, since scry_open keeps the temp dir.
 scry_view_html() {
-    if [ "$FORCE_WINDOW" = "1" ]; then
-        scry_open "$1"
-    else
-        scry_fallback "$1"
-    fi
+    scry_fallback "$1"
+}
+
+scry_full_html() {
+    scry_open "$1"
 }
 
 scry_preview_html() {
