@@ -12,7 +12,8 @@ SCRY_HELPERS=()   # helper binaries reported by `scry --doctor`
 SCRY_HELPER_ENABLES=()
 SCRY_HELPER_HINTS=()
 
-# Set to 1 by `scry -f`; handlers use it to pick their "full" variant.
+# Set to 1 by `scry -f`, which then calls a handler's scry_full_NAME. Still
+# set for handlers written before that, which chose their variant by it.
 FORCE_WINDOW=0
 # Set to 1 by `scry --preview`: non-interactive output for previewers like
 # fzf. Handlers must not open windows, pagers or players when this is set.
@@ -258,6 +259,9 @@ scry_need_window() {
     [ "$what" != - ] || what=stdin
     echo "scry: no window for '$what': $why. Showing its preview." >&2
     [ -z "${1:-}" ] || echo "scry: $1" >&2
+    # From here it's a preview: bat stops paging, and a preview that asks
+    # for a window in turn gets the summary rather than asking forever.
+    SCRY_PREVIEW=1
     scry_preview_file "$SCRY_HANDLER" "$SCRY_PATH"
     exit 0
 }

@@ -253,10 +253,13 @@ expect_out "# hi" "and the next file is still shown"
 printf 'scry_register j "xx" "j"\nscry_helper jq "json" "get jq from jq.dev"\nscry_view_j() { scry_require jq; }\n' \
     > "$WORK/handlers/mine.sh"
 run a.xx;               expect_out "'jq' not found. get jq from jq.dev" "scry_require without a hint uses the declared one"
-printf 'scry_register w "xx" "w"\nscry_view_w() { :; }\nscry_preview_w() { scry_open "$1"; }\n' \
+printf 'scry_register w "xx" "w"\nscry_view_w() { scry_open "$1"; }\nscry_preview_w() { scry_open "$1"; }\n' \
     > "$WORK/handlers/mine.sh"
 run -p a.xx;            expect_silent open "a preview that asks for a window opens none"
 expect_out "a.xx" "and shows the summary"
+# Over ssh the view falls back to that preview, which mustn't fall back again.
+SSH="1.2.3.4 5 6.7.8.9 22" run a.xx
+expect_rc 0 "a window-only view and preview over ssh end"; expect_out "a.xx" "with the summary"
 # Handlers written before scry_full_* chose their -f variant themselves.
 printf 'scry_register old "xx" "old"\nscry_view_old() { echo "VIEW FW=$FORCE_WINDOW"; }\n' \
     > "$WORK/handlers/mine.sh"
